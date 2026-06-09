@@ -3,29 +3,21 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Bot,
-  Eye,
-  History,
   Info,
   MessageSquare,
-  Pencil,
   Plus,
   Save,
-  Search,
   Settings2,
   Sparkles,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
-import { ChatPanel } from "@/components/assistant/chat-panel";
 import { ConversationHistoryDialog } from "@/components/assistant/conversation-history-dialog";
-import {
-  type ToolCall,
-  useToolExecutionTracker,
-} from "@/components/assistant/tool-execution-tracker";
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
+import { AgentChatPane } from "@/components/settings/assistant/AgentChatPane";
+import { AgentChecklist } from "@/components/settings/assistant/AgentChecklist";
 import { ModelPicker } from "@/components/settings/ModelPicker";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -37,38 +29,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useAgentCatalog, useAgents } from "@/hooks/use-agents";
+import { useAssistantChat } from "@/hooks/use-assistant-chat";
 import { useSlashCommands } from "@/hooks/use-slash-commands";
 import {
   type AgentPayload,
   createAgent,
   deleteAgent,
   getAgent,
-  getAgentCatalog,
-  listAgents,
   updateAgent,
 } from "@/lib/api-agents";
 import {
-  createSession,
   deleteSession,
   getSessionWithMessages,
   listSessions,
   markSessionRead,
 } from "@/lib/api-sessions";
 import { convertBackendMessage } from "@/lib/message-utils";
-import {
-  type StreamingRequest,
-  useStreamingClient,
-} from "@/lib/streaming-client";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
 import type { Agent, AgentCatalog } from "@/types/agent";
 import type { ConversationSummary } from "@/types/conversation";
-import type { AssetReference, Message } from "@/types/message";
-import { convertToToolCallSummary } from "@/types/message";
+import type { Message } from "@/types/message";
+
+export { AgentChecklist } from "@/components/settings/assistant/AgentChecklist";
 
 function buildWelcomeMessage(agentName: string): Message {
   return {
@@ -93,170 +80,7 @@ function createEmptyDraft(): AgentPayload {
 
 const LOAD_SKILL_TOOL_NAME = "loadSkill";
 
-interface ChecklistItem {
-  name: string;
-  label?: string;
-  description: string;
-  accessLevel?: "read" | "write";
-  availability?: "available" | "setup_required" | "disabled";
-  availabilityReason?: string;
-}
-
-export function AgentChecklist({
-  title,
-  description,
-  items,
-  selectedNames,
-  lockedNames,
-  onToggle,
-  disabled,
-}: {
-  title: string;
-  description: string;
-  items: ChecklistItem[];
-  selectedNames: string[];
-  lockedNames?: string[];
-  onToggle: (name: string, checked: boolean) => void;
-  disabled?: boolean;
-}) {
-  const [search, setSearch] = useState("");
-  const filteredItems = useMemo(() => {
-    if (!search) return items;
-    const q = search.toLowerCase();
-    return items.filter(
-      (item) =>
-        (item.label ?? item.name).toLowerCase().includes(q) ||
-        item.name.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q),
-    );
-  }, [items, search]);
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {items.length > 5 && (
-          <div className="relative mb-3">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search ${title.toLowerCase()}...`}
-              className="pl-8 h-9"
-            />
-          </div>
-        )}
-        <div className="max-h-[calc(50vh-8rem)] overflow-y-auto pr-1">
-          <div className="space-y-3">
-            {filteredItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No {title.toLowerCase()} match your search.
-              </p>
-            ) : (
-              filteredItems.map((item) => {
-                const checked = selectedNames.includes(item.name);
-                const isLocked = lockedNames?.includes(item.name) ?? false;
-                const isUnavailable =
-                  item.availability !== undefined &&
-                  item.availability !== "available";
-                const isToggleDisabled =
-                  disabled || isLocked || (isUnavailable && !checked);
-                return (
-                  <div
-                    key={item.name}
-                    className="flex items-start gap-3 rounded-xl border bg-background px-3 py-3"
-                  >
-                    <Checkbox
-                      id={`${title}-${item.name}`}
-                      checked={checked}
-                      onCheckedChange={(value) =>
-                        onToggle(item.name, value === true)
-                      }
-                      className="mt-0.5"
-                      disabled={isToggleDisabled}
-                    />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Label
-                          htmlFor={`${title}-${item.name}`}
-                          className="text-sm font-medium"
-                        >
-                          {item.label || item.name}
-                        </Label>
-                        <Badge
-                          variant="secondary"
-                          className="font-mono text-[10px]"
-                        >
-                          {item.name}
-                        </Badge>
-                        {isLocked && (
-                          <Badge variant="outline" className="text-[10px]">
-                            Required
-                          </Badge>
-                        )}
-                        {item.accessLevel === "read" ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] gap-0.5"
-                          >
-                            <Eye className="h-2.5 w-2.5" />
-                            Read
-                          </Badge>
-                        ) : item.accessLevel === "write" ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] gap-0.5"
-                          >
-                            <Pencil className="h-2.5 w-2.5" />
-                            Write
-                          </Badge>
-                        ) : null}
-                        {item.name === "browseChrome" && (
-                          <>
-                            <Badge variant="outline" className="text-[10px]">
-                              Local only
-                            </Badge>
-                            <Badge variant="outline" className="text-[10px]">
-                              Signed-in Chrome
-                            </Badge>
-                            <Badge variant="outline" className="text-[10px]">
-                              Interactive
-                            </Badge>
-                          </>
-                        )}
-                        {item.availability === "setup_required" && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            Setup required
-                          </Badge>
-                        )}
-                        {item.availability === "disabled" && (
-                          <Badge variant="secondary" className="text-[10px]">
-                            Disabled
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {item.description}
-                      </p>
-                      {item.availabilityReason && (
-                        <p className="text-xs text-muted-foreground">
-                          {item.availabilityReason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+const EMPTY_CATALOG: AgentCatalog = { tools: [], skills: [] };
 
 interface AssistantSettingsProps {
   selectedAgentId: string;
@@ -269,42 +93,20 @@ export default function AssistantSettings({
   const queryClient = useQueryClient();
   const [preferences, , isLoaded] = useAssistantPreferences();
 
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [catalog, setCatalog] = useState<AgentCatalog>({
-    tools: [],
-    skills: [],
-  });
+  const { data: agents = [], isLoading: isLoadingAgentList } = useAgents();
+  const { data: catalog = EMPTY_CATALOG, isLoading: isLoadingCatalog } =
+    useAgentCatalog();
+  const isLoadingAgents = isLoadingAgentList || isLoadingCatalog;
+
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [draft, setDraft] = useState<AgentPayload>(createEmptyDraft());
   const [draftTemplate, setDraftTemplate] = useState<AgentPayload | null>(null);
   const [activeMode, setActiveMode] = useState<"chat" | "configure">("chat");
-  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [attachedAssets, setAttachedAssets] = useState<AssetReference[]>([]);
-  const [currentConversation, setCurrentConversation] =
-    useState<ConversationSummary | null>(null);
   const [sessions, setSessions] = useState<ConversationSummary[]>([]);
-  const [isLoadingSession, setIsLoadingSession] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingThought, setStreamingThought] = useState("");
-  const [streamingText, setStreamingText] = useState("");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const finalStreamingTextRef = useRef("");
-  const finalStreamingThoughtRef = useRef("");
-  const currentConversationRef = useRef(currentConversation);
-  currentConversationRef.current = currentConversation;
-
-  const {
-    toolCalls: streamingToolCalls,
-    addOrUpdateTool,
-    clearTools,
-  } = useToolExecutionTracker();
 
   const [runtimeKind, setRuntimeKind] = useState<"native" | "external_harness">(
     "native",
@@ -323,51 +125,25 @@ export default function AssistantSettings({
     return Array.from(names);
   }, [draft.toolNames, loadSkillRequired, isExternalHarness]);
 
-  const refreshAgents = useCallback(async () => {
-    const [agentList, agentCatalog] = await Promise.all([
-      listAgents(),
-      getAgentCatalog(),
-    ]);
-    setAgents(agentList.items);
-    setCatalog(agentCatalog);
-  }, []);
-
   const refreshSessions = useCallback(async (agentActorId: string) => {
     const response = await listSessions(20, 0, agentActorId);
     setSessions(response.items);
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const load = async () => {
-      setIsLoadingAgents(true);
-      try {
-        await refreshAgents();
-      } catch (error) {
-        if (!mounted) return;
-        toast.error(
-          error instanceof Error ? error.message : "Failed to load agents",
-        );
-      } finally {
-        if (mounted) {
-          setIsLoadingAgents(false);
-        }
+  // Shared assistant chat core (messages, streaming, tool approvals, ...)
+  const chat = useAssistantChat({
+    agentActorId: selectedAgentId,
+    buildWelcomeMessage: () => buildWelcomeMessage(selectedAgentName),
+    sendDisabled: selectedAgentId === "new",
+    toastOnError: true,
+    onConversationLoaded: () => setActiveMode("chat"),
+    onStreamDone: async () => {
+      if (selectedAgentId !== "new") {
+        await refreshSessions(selectedAgentId);
       }
-    };
-
-    load();
-
-    const onAgentsUpdated = () => {
-      load();
-    };
-
-    window.addEventListener("agents-updated", onAgentsUpdated);
-    return () => {
-      mounted = false;
-      window.removeEventListener("agents-updated", onAgentsUpdated);
-    };
-  }, [refreshAgents]);
+    },
+  });
+  const { setMessages, setCurrentConversation } = chat;
 
   useEffect(() => {
     let cancelled = false;
@@ -438,149 +214,26 @@ export default function AssistantSettings({
     return () => {
       cancelled = true;
     };
-  }, [draftTemplate, queryClient, selectedAgentId]);
+  }, [
+    draftTemplate,
+    queryClient,
+    selectedAgentId,
+    setCurrentConversation,
+    setMessages,
+  ]);
 
-  const streamingClient = useStreamingClient({
-    onThought: (content) => {
-      finalStreamingThoughtRef.current += content;
-      setStreamingThought((prev) => prev + content);
-    },
-    onToolCall: (id, name, status, args, result, error) => {
-      addOrUpdateTool(id, name, status, args, result, error);
-    },
-    onApprovalRequired: (id, name, _label, args) => {
-      addOrUpdateTool(id, name, "awaiting_approval", args);
-    },
-    onApprovalResolved: (id, name, approved, reason) => {
-      if (approved) {
-        addOrUpdateTool(id, name, "executing");
-      } else {
-        addOrUpdateTool(
-          id,
-          name,
-          "error",
-          undefined,
-          undefined,
-          reason || "Denied by user",
-        );
-      }
-    },
-    onTextChunk: (content) => {
-      finalStreamingTextRef.current += content;
-      setStreamingText((prev) => prev + content);
-    },
-    onError: (error) => {
-      setIsStreaming(false);
-      finalStreamingTextRef.current = "";
-      finalStreamingThoughtRef.current = "";
-      toast.error(error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error-${Date.now()}`,
-          role: "assistant",
-          content: error,
-          timestamp: new Date(),
-          isError: true,
-        },
-      ]);
-    },
-    onDone: async () => {
-      const finalContent = finalStreamingTextRef.current.trim();
-      if (finalContent) {
-        const assistantMessage: Message = {
-          id: `assistant-${Date.now()}`,
-          role: "assistant",
-          content: finalContent,
-          timestamp: new Date(),
-          thinkingContent: finalStreamingThoughtRef.current.trim() || null,
-          toolCalls:
-            streamingToolCalls.length > 0
-              ? streamingToolCalls.map(convertToToolCallSummary)
-              : undefined,
-        };
-        flushSync(() => {
-          setMessages((prev) => [...prev, assistantMessage]);
-        });
-      }
-      setIsStreaming(false);
-      setStreamingText("");
-      setStreamingThought("");
-      finalStreamingTextRef.current = "";
-      finalStreamingThoughtRef.current = "";
-      clearTools();
-      if (selectedAgentId !== "new") {
-        await refreshSessions(selectedAgentId);
-        // User was watching the response — mark as read immediately
-        const sessionId = currentConversationRef.current?.id;
-        if (sessionId) {
-          markSessionRead(sessionId).catch(() => {});
-          queryClient.invalidateQueries({ queryKey: ["session-status"] });
-        }
-      }
-    },
-  });
-
-  // Tool approval handlers
-  const handleApproveToolCall = useCallback((toolCallId: string) => {
-    const sessionId = currentConversationRef.current?.id;
-    if (!sessionId) return;
-    fetch(`/api/sessions/${sessionId}/approve-tool`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolCallId, approved: true }),
-      credentials: "include",
-    }).catch((err) => console.error("Failed to approve tool:", err));
-  }, []);
-
-  const handleDenyToolCall = useCallback((toolCallId: string) => {
-    const sessionId = currentConversationRef.current?.id;
-    if (!sessionId) return;
-    fetch(`/api/sessions/${sessionId}/approve-tool`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolCallId, approved: false }),
-      credentials: "include",
-    }).catch((err) => console.error("Failed to deny tool:", err));
-  }, []);
-
-  const handleSessionSelect = async (session: ConversationSummary) => {
-    setIsLoadingSession(true);
-    try {
-      const loaded = await getSessionWithMessages(session.id);
-      setCurrentConversation(session);
-      setMessages(loaded.messages.map(convertBackendMessage));
-      setActiveMode("chat");
-
-      // Clear unread indicator if the session had one
-      if (session.hasUnreadResponse) {
-        markSessionRead(session.id).catch(() => {});
-        queryClient.invalidateQueries({ queryKey: ["session-status"] });
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to load session",
-      );
-    } finally {
-      setIsLoadingSession(false);
-    }
+  const handleSessionSelect = (session: ConversationSummary) => {
+    chat.loadConversation(session);
   };
 
   const startNewChat = () => {
-    setCurrentConversation(null);
-    setMessages([buildWelcomeMessage(selectedAgentName)]);
-    setInput("");
-    setStreamingText("");
-    setStreamingThought("");
-    finalStreamingTextRef.current = "";
-    finalStreamingThoughtRef.current = "";
-    setIsStreaming(false);
-    clearTools();
+    chat.resetConversation();
+    chat.setInput("");
   };
 
   const handleDeleteSession = async (id: string) => {
     await deleteSession(id);
-    if (currentConversation?.id === id) {
+    if (chat.currentConversation?.id === id) {
       startNewChat();
     }
     if (selectedAgentId !== "new") {
@@ -596,63 +249,6 @@ export default function AssistantSettings({
     }
   };
 
-  const handleSend = async (textOverride?: string) => {
-    const text = textOverride || input;
-    if (!text.trim() || selectedAgentId === "new" || !isLoaded) {
-      return;
-    }
-
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: text,
-      timestamp: new Date(),
-    };
-    const prompt = text;
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsStreaming(true);
-    setStreamingThought("");
-    setStreamingText("");
-    finalStreamingTextRef.current = "";
-    finalStreamingThoughtRef.current = "";
-    clearTools();
-
-    try {
-      let sessionId = currentConversation?.id;
-      if (!sessionId) {
-        const session = await createSession({
-          agentActorId: selectedAgentId,
-        });
-        sessionId = session.id;
-        setCurrentConversation(session);
-      }
-
-      const request: StreamingRequest = {
-        sessionId,
-        prompt,
-        enableThinking: preferences.showThinkingTokens,
-        context:
-          attachedAssets.length > 0
-            ? {
-                agentActorId: selectedAgentId,
-                assets: attachedAssets.map((asset) => ({
-                  type: asset.type,
-                  id: asset.id,
-                })),
-              }
-            : { agentActorId: selectedAgentId },
-      };
-
-      await streamingClient.startStream(request);
-    } catch (error) {
-      setIsStreaming(false);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to send message",
-      );
-    }
-  };
-
   // Slash commands
   const slashAgents = useMemo(
     () =>
@@ -664,8 +260,8 @@ export default function AssistantSettings({
     [agents],
   );
 
-  const handleSendRef = useRef(handleSend);
-  handleSendRef.current = handleSend;
+  const handleSendRef = useRef(chat.handleSend);
+  handleSendRef.current = chat.handleSend;
   const startNewChatRef = useRef(startNewChat);
   startNewChatRef.current = startNewChat;
 
@@ -688,8 +284,8 @@ export default function AssistantSettings({
   const slash = useSlashCommands({
     assistantAgentId: selectedAgentId,
     agents: slashAgents,
-    input,
-    setInput,
+    input: chat.input,
+    setInput: chat.setInput,
     actions: slashActions,
   });
 
@@ -702,9 +298,9 @@ export default function AssistantSettings({
   };
 
   const handleSendWithSlash = (textOverride?: string) => {
-    const text = textOverride || input;
+    const text = textOverride || chat.input;
     if (slash.interceptSend(text)) return;
-    handleSend(textOverride);
+    chat.handleSend(textOverride);
   };
 
   const slashPaletteConfig = slash.palette.open
@@ -750,7 +346,7 @@ export default function AssistantSettings({
           ? await createAgent(payload)
           : await updateAgent(selectedAgentId, payload);
 
-      window.dispatchEvent(new Event("agents-updated"));
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
       toast.success(
         selectedAgentId === "new"
           ? `${savedAgent.name} created`
@@ -779,7 +375,7 @@ export default function AssistantSettings({
 
     try {
       await deleteAgent(selectedAgent.id);
-      window.dispatchEvent(new Event("agents-updated"));
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
       setShowDeleteDialog(false);
       toast.success(`${selectedAgent.name} deleted`);
       navigate({
@@ -910,60 +506,16 @@ export default function AssistantSettings({
 
         {!isNew && (
           <TabsContent value="chat" className="mt-0">
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Agent Chat
-                  </CardTitle>
-                  <CardDescription>
-                    Each chat stays pinned to this agent's current identity and
-                    capabilities.
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  {sessions.length > 0 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowHistory(true)}
-                    >
-                      <History className="mr-2 h-4 w-4" />
-                      History ({sessions.length})
-                    </Button>
-                  )}
-                  <Button variant="outline" size="sm" onClick={startNewChat}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Chat
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="h-[640px]">
-                <ChatPanel
-                  messages={messages}
-                  isLoading={isLoadingSession}
-                  currentConversation={currentConversation}
-                  input={input}
-                  setInput={setInput}
-                  handleSend={handleSendWithSlash}
-                  handleKeyDown={handleKeyDown}
-                  attachedAssets={attachedAssets}
-                  setAttachedAssets={setAttachedAssets}
-                  isStreaming={isStreaming}
-                  streamingThought={streamingThought}
-                  streamingText={streamingText}
-                  streamingToolCalls={streamingToolCalls as ToolCall[]}
-                  onApproveToolCall={handleApproveToolCall}
-                  onDenyToolCall={handleDenyToolCall}
-                  showThinkingTokens={preferences.showThinkingTokens}
-                  slashPalette={slashPaletteConfig}
-                  className="h-full"
-                />
-                <div ref={messagesEndRef} />
-                <div ref={inputRef} />
-              </CardContent>
-            </Card>
+            <AgentChatPane
+              chat={chat}
+              sessionCount={sessions.length}
+              showThinkingTokens={preferences.showThinkingTokens}
+              handleSend={handleSendWithSlash}
+              handleKeyDown={handleKeyDown}
+              onShowHistory={() => setShowHistory(true)}
+              onNewChat={startNewChat}
+              slashPalette={slashPaletteConfig}
+            />
           </TabsContent>
         )}
 
@@ -1146,7 +698,7 @@ export default function AssistantSettings({
         onSelectConversation={handleSessionSelect}
         onDeleteConversation={handleDeleteSession}
         onDeleteAllConversations={handleDeleteAllSessions}
-        currentConversationId={currentConversation?.id}
+        currentConversationId={chat.currentConversation?.id}
         agentActorId={selectedAgentId !== "new" ? selectedAgentId : undefined}
       />
     </div>

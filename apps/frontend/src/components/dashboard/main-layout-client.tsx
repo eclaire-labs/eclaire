@@ -1,5 +1,4 @@
 import { DEFAULT_AGENT_ACTOR_ID } from "@eclaire/api-types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Activity,
@@ -26,22 +25,19 @@ import {
   useMemo,
   useRef,
   useState,
-  useTransition,
 } from "react";
-import { flushSync } from "react-dom";
 
 import { AssistantOverlay } from "@/components/assistant/assistant-overlay";
 import { ChatPanel } from "@/components/assistant/chat-panel";
 import { GlobalAssistant } from "@/components/assistant/global-assistant";
-import { useToolExecutionTracker } from "@/components/assistant/tool-execution-tracker";
+import { DashboardMobileLayout } from "@/components/dashboard/MobileLayout";
 import { TopBar } from "@/components/dashboard/top-bar";
-import { MobileChatView } from "@/components/mobile/mobile-chat-view";
-import { MobileFoldersView } from "@/components/mobile/mobile-folders-view";
-import { MobileLayout } from "@/components/mobile/mobile-layout";
-import type { MobileTab } from "@/components/mobile/mobile-tab-bar";
 import { SidebarShell } from "@/components/sidebar/sidebar-shell";
-import { MobileNavigationProvider } from "@/contexts/mobile-navigation-context";
+import { useAgents } from "@/hooks/use-agents";
+import { useAssistantChat } from "@/hooks/use-assistant-chat";
+import { useInboxCount } from "@/hooks/use-inbox";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePanelResize } from "@/hooks/use-panel-resize";
 import { useAgentExecutionStatus } from "@/hooks/use-session-status";
 import {
   useSidebarCollapsed,
@@ -52,33 +48,10 @@ import {
   useSidebarModeShortcut,
 } from "@/hooks/use-sidebar-mode";
 import { useSlashCommands } from "@/hooks/use-slash-commands";
-import { listAgents } from "@/lib/api-agents";
-import { apiFetch } from "@/lib/api-client";
-import {
-  abortSession,
-  createSession,
-  deleteSession,
-  getSessionWithMessages,
-  listSessions,
-  markSessionRead,
-  updateSession,
-} from "@/lib/api-sessions";
-import { convertBackendMessage } from "@/lib/message-utils";
-import {
-  getMobileTabFromPathname,
-  getRouteForMobileTab,
-} from "@/lib/mobile-navigation";
-import {
-  type StreamingRequest,
-  useStreamingClient,
-} from "@/lib/streaming-client";
+import { deleteSession, listSessions, updateSession } from "@/lib/api-sessions";
 import { useAssistantPreferences } from "@/providers/AssistantPreferencesProvider";
-import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
-import type { Agent } from "@/types/agent";
-import type { Bookmark as BookmarkType } from "@/types/bookmark";
 import type { ConversationSummary } from "@/types/conversation";
-import type { AssetReference, ContentLink, Message } from "@/types/message";
-import { convertToToolCallSummary } from "@/types/message";
+import type { AssetReference, Message } from "@/types/message";
 
 // Base navigation items — inbox badge is injected dynamically
 const baseNavigation = [
@@ -100,19 +73,13 @@ const baseNavigation = [
   { name: "History", href: "/history", icon: History },
 ];
 
-function useInboxCount() {
-  const { isConnected } = useSSEConnectionStatus();
-  return useQuery<{ totalCount: number }>({
-    queryKey: ["inbox-count"],
-    queryFn: async () => {
-      const res = await apiFetch("/api/tasks/inbox");
-      if (!res.ok) return { totalCount: 0 };
-      const data = await res.json();
-      return { totalCount: data.totalCount ?? 0 };
-    },
-    refetchInterval: isConnected ? false : 30_000,
-    staleTime: 10_000,
-  });
+function buildWelcomeMessage(): Message {
+  return {
+    id: Date.now().toString(),
+    role: "assistant",
+    content: "Hello! I'm your AI assistant. How can I help you today?",
+    timestamp: new Date(),
+  };
 }
 
 interface MainLayoutClientProps {
@@ -123,7 +90,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const location = useLocation();
   const { pathname } = location;
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { data: inboxCount } = useInboxCount();
   const navigation = useMemo(
@@ -140,9 +106,12 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   const [preAttachedAssets, setPreAttachedAssets] = useState<AssetReference[]>(
     [],
   );
-  const [assistantWidth, setAssistantWidth] = useState(384); // 96 * 4 = 384px (w-96 equivalent)
-  const [isResizing, setIsResizing] = useState(false);
-  const _resizeRef = useRef<HTMLDivElement>(null);
+  const {
+    width: assistantWidth,
+    setWidth: setAssistantWidth,
+    isResizing,
+    handleMouseDown,
+  } = usePanelResize();
 
   // Sidebar mode & collapse
   const [sidebarMode, setSidebarMode] = useSidebarMode();
@@ -160,291 +129,46 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     }
   }, [pathname]);
 
-  // Mobile state
-  const [currentMobileTab, setCurrentMobileTab] = useState<MobileTab>("chat");
-  const [foldersSheetOpen, setFoldersSheetOpen] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
-
   // Assistant preferences
-  const [assistantPreferences, , preferencesLoaded] = useAssistantPreferences();
+  const [assistantPreferences] = useAssistantPreferences();
 
-  // Assistant conversation state
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [attachedAssets, setAttachedAssets] = useState<AssetReference[]>([]);
-  const [currentConversation, setCurrentConversation] =
-    useState<ConversationSummary | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
-  const [agentRailItems, setAgentRailItems] = useState<Agent[]>([]);
+  const { data: agentRailItems = [] } = useAgents();
   const [assistantAgentId, setAssistantAgentId] = useState<string>(
     DEFAULT_AGENT_ACTOR_ID,
   );
   const agentStatuses = useAgentExecutionStatus();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const currentConversationRef = useRef(currentConversation);
-  currentConversationRef.current = currentConversation;
+  const [showHistory, setShowHistory] = useState(false);
 
-  // Streaming state (always enabled)
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingThought, setStreamingThought] = useState("");
-  const [streamingText, setStreamingText] = useState("");
-  const finalStreamingTextRef = useRef<string>("");
-  const {
-    toolCalls: streamingToolCalls,
-    addOrUpdateTool,
-    clearTools,
-  } = useToolExecutionTracker();
-
-  useEffect(() => {
-    const loadAgents = async () => {
-      try {
-        const response = await listAgents();
-        setAgentRailItems(response.items);
-      } catch (error) {
-        console.error("Failed to load agents:", error);
-      }
-    };
-
-    loadAgents();
-    window.addEventListener("agents-updated", loadAgents);
-
-    return () => {
-      window.removeEventListener("agents-updated", loadAgents);
-    };
-  }, []);
-
-  // Streaming optimization state
-  const [_isPending, startTransition] = useTransition();
-  const pendingChunksRef = useRef<string>("");
-  const batchTimeoutRef = useRef<number | null>(null);
-  const lastChunkTimeRef = useRef<number>(0);
-
-  // Cleanup batching timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (batchTimeoutRef.current !== null) {
-        window.cancelAnimationFrame(batchTimeoutRef.current);
-        batchTimeoutRef.current = null;
-      }
-    };
-  }, []);
-
-  // Intelligent batching for streaming text chunks
-  const flushPendingChunks = useCallback(() => {
-    if (pendingChunksRef.current) {
-      const chunksToFlush = pendingChunksRef.current;
-      pendingChunksRef.current = "";
-
-      startTransition(() => {
-        setStreamingText((prev) => {
-          return prev + chunksToFlush;
-        });
-      });
-    }
-    batchTimeoutRef.current = null;
-  }, []);
-
-  const processBatchedChunk = useCallback(
-    (content: string) => {
-      const now = performance.now();
-      const timeSinceLastChunk = now - lastChunkTimeRef.current;
-      lastChunkTimeRef.current = now;
-
-      pendingChunksRef.current += content;
-
-      // If chunks are coming rapidly (< 16ms apart), batch them
-      // Otherwise, flush immediately for responsive UX
-      if (timeSinceLastChunk < 16 && batchTimeoutRef.current === null) {
-        batchTimeoutRef.current =
-          window.requestAnimationFrame(flushPendingChunks);
-      } else if (batchTimeoutRef.current === null) {
-        // Immediate flush for responsive feel
-        flushPendingChunks();
-      }
-    },
-    [flushPendingChunks],
-  );
-
-  const resetBatchingState = useCallback(() => {
-    pendingChunksRef.current = "";
-    lastChunkTimeRef.current = 0;
-    if (batchTimeoutRef.current !== null) {
-      window.cancelAnimationFrame(batchTimeoutRef.current);
-      batchTimeoutRef.current = null;
-    }
-  }, []);
-
-  // Initialize streaming client
-  const streamingClient = useStreamingClient({
-    onThought: (content: string, _timestamp?: string) => {
-      setStreamingThought((prev) => prev + content);
-    },
-    onToolCall: (
-      id: string | undefined,
-      name: string,
-      status: "starting" | "executing" | "completed" | "error",
-      args?: Record<string, unknown>,
-      result?: unknown,
-      error?: string,
-    ) => {
-      addOrUpdateTool(id, name, status, args, result, error);
-    },
-    onApprovalRequired: (
-      id: string,
-      name: string,
-      _label: string,
-      args: Record<string, unknown>,
-    ) => {
-      addOrUpdateTool(id, name, "awaiting_approval", args);
-    },
-    onApprovalResolved: (
-      id: string,
-      name: string,
-      approved: boolean,
-      reason?: string,
-    ) => {
-      if (approved) {
-        addOrUpdateTool(id, name, "executing");
-      } else {
-        addOrUpdateTool(
-          id,
-          name,
-          "error",
-          undefined,
-          undefined,
-          reason || "Denied by user",
-        );
-      }
-    },
-    onTextChunk: (content: string, _timestamp?: string) => {
-      finalStreamingTextRef.current += content;
-      processBatchedChunk(content);
-    },
-    onError: (error: string, _timestamp?: string) => {
-      console.error("❌ Streaming error received:", error);
-      setIsStreaming(false);
-      // Add error message to conversation
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `Error: ${error}`,
-        timestamp: new Date(),
-        isError: true,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    },
-    onDone: (
-      requestId?: string,
-      _conversationId?: string,
-      _totalTokens?: number,
-      _executionTimeMs?: number,
-    ) => {
-      // It's good practice to flush any remaining batched chunks to ensure the UI is
-      // fully up-to-date before we finalize the message.
-      flushPendingChunks();
-
-      // *** FIX: Use the ref as the source of truth for the final message content. ***
-      // This avoids the race condition where the 'streamingText' state might not be updated yet.
-      const finalContent = finalStreamingTextRef.current.trim();
-      const finalThought = streamingThought.trim();
-
-      // Only add a new message if we actually received content.
-      if (finalContent) {
-        // Construct the final assistant message object.
-        const assistantMessage: Message = {
-          id: requestId || (Date.now() + 1).toString(),
-          role: "assistant",
-          content: finalContent,
-          timestamp: new Date(),
-          thinkingContent: finalThought || null,
-          // Persist the tool calls that were part of this streaming response.
-          toolCalls:
-            streamingToolCalls.length > 0
-              ? streamingToolCalls.map(convertToToolCallSummary)
-              : undefined,
-        };
-
-        // Check for any content links (e.g., /documents/xyz) in the final response.
-        const detectedLinks = detectContentLinks(finalContent);
-        if (detectedLinks.length > 0) {
-          assistantMessage.contentLinks = detectedLinks;
-        }
-
-        // *** FIX: Use flushSync to synchronously update the DOM. ***
-        // This guarantees that the new message is rendered *before* we remove the
-        // "Thinking..." indicator, preventing any UI flicker.
-        flushSync(() => {
-          setMessages((prev) => [...prev, assistantMessage]);
-        });
-
-        // If we found links, we can now asynchronously fetch their rich metadata
-        // and update the message again without blocking the UI.
-        if (detectedLinks.length > 0) {
-          Promise.all(detectedLinks.map(fetchContentMetadata)).then(
-            (enrichedLinks) => {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantMessage.id
-                    ? { ...msg, contentLinks: enrichedLinks }
-                    : msg,
-                ),
-              );
-            },
-          );
-        }
-      }
-
-      // --- Final Cleanup ---
-      // Reset all streaming-related state to prepare for the next user message.
-      setIsStreaming(false);
-      setStreamingThought("");
-      setStreamingText("");
-      finalStreamingTextRef.current = ""; // <-- CRUCIAL: Reset the ref for the next message.
-      resetBatchingState();
-      clearTools();
-
-      // User was watching the response — mark as read immediately
-      const sessionId = currentConversationRef.current?.id;
-      if (sessionId) {
-        markSessionRead(sessionId).catch(() => {});
-        queryClient.invalidateQueries({ queryKey: ["session-status"] });
-      }
-    },
-    onConnect: () => {},
-    onDisconnect: () => {
-      // Don't set isStreaming=false here - let onDone or onError handle it
-      // This prevents premature clearing of loading state
-    },
+  // Shared assistant chat core (messages, streaming, tool approvals, ...)
+  const chat = useAssistantChat({
+    agentActorId: assistantAgentId,
+    buildWelcomeMessage,
+    enrichContentLinks: true,
+    clearAttachmentsOnLoad: true,
   });
-
-  // Tool approval handlers
-  const handleApproveToolCall = useCallback((toolCallId: string) => {
-    const sessionId = currentConversationRef.current?.id;
-    if (!sessionId) return;
-    fetch(`/api/sessions/${sessionId}/approve-tool`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolCallId, approved: true }),
-      credentials: "include",
-    }).catch((err) => {
-      console.error("Failed to approve tool execution:", err);
-    });
-  }, []);
-
-  const handleDenyToolCall = useCallback((toolCallId: string) => {
-    const sessionId = currentConversationRef.current?.id;
-    if (!sessionId) return;
-    fetch(`/api/sessions/${sessionId}/approve-tool`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ toolCallId, approved: false }),
-      credentials: "include",
-    }).catch((err) => {
-      console.error("Failed to deny tool execution:", err);
-    });
-  }, []);
+  const {
+    messages,
+    setMessages,
+    input,
+    setInput,
+    attachedAssets,
+    setAttachedAssets,
+    currentConversation,
+    setCurrentConversation,
+    isLoadingConversation,
+    isStreaming,
+    streamingThought,
+    streamingText,
+    streamingToolCalls,
+    messagesEndRef,
+    inputRef,
+    handleSend,
+    handleApproveToolCall,
+    handleDenyToolCall,
+    loadConversation,
+    resetConversation,
+    stopStreaming,
+  } = chat;
 
   useEffect(() => {
     if (assistantOpen && !currentConversation) {
@@ -467,62 +191,31 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
         setMessages([welcomeMessage]);
       }
     }
-  }, [preAttachedAssets, assistantOpen, currentConversation]);
+  }, [
+    preAttachedAssets,
+    assistantOpen,
+    currentConversation,
+    setAttachedAssets,
+    setMessages,
+  ]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+  }, [messagesEndRef]);
 
   useEffect(() => {
     scrollToBottom();
   }, [scrollToBottom]);
 
-  useEffect(() => {
-    return () => {
-      messages.forEach((message) => {
-        if (message.imageUrl?.startsWith("blob:")) {
-          URL.revokeObjectURL(message.imageUrl);
-        }
-      });
-    };
-  }, [messages]);
-
-  // Mobile tab management
-  useEffect(() => {
-    if (isMobile) {
-      // Update mobile tab based on current pathname
-      const newTab = getMobileTabFromPathname(pathname);
-      setCurrentMobileTab(newTab);
-    }
-  }, [pathname, isMobile]);
-
-  const handleMobileTabChange = (tab: MobileTab) => {
-    setCurrentMobileTab(tab);
-
-    // Handle navigation for tabs that have routes
-    const route = getRouteForMobileTab(tab);
-    if (route && pathname !== route) {
-      navigate({ to: route });
-    }
-
-    // Handle tab-specific state changes
-    if (tab === "folders") {
-      setFoldersSheetOpen(true);
-    } else {
-      setFoldersSheetOpen(false);
-    }
-
-    // Chat tab doesn't need special state since it's handled by the content render
-  };
-
-  const _handleFoldersToggle = () => {
-    setFoldersSheetOpen(!foldersSheetOpen);
-  };
-
   // Function to open assistant with pre-attached assets
   const openAssistantWithAssets = (assets: AssetReference[]) => {
     setPreAttachedAssets(assets);
     setAssistantOpen(true);
+  };
+
+  const startNewConversation = () => {
+    stopStreaming();
+    resetConversation();
   };
 
   // Sidebar AI mode handlers — open chat in main content area
@@ -532,7 +225,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
   };
 
   const handleSelectConversationFromSidebar = (conv: ConversationSummary) => {
-    handleSelectConversation(conv);
+    loadConversation(conv);
     setShowAiChat(true);
   };
 
@@ -547,7 +240,7 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
       lastMessageAt: null,
       messageCount: 0,
     };
-    handleSelectConversation(conv);
+    loadConversation(conv);
     setShowAiChat(true);
   };
 
@@ -578,34 +271,6 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     setAssistantOpen(false);
     setAssistantFullScreen(false);
     setPreAttachedAssets([]);
-  };
-
-  // Conversation management functions
-  const loadConversation = async (conversation: ConversationSummary) => {
-    setIsLoadingConversation(true);
-    try {
-      const conversationWithMessages = await getSessionWithMessages(
-        conversation.id,
-      );
-
-      setCurrentConversation(conversation);
-      const convertedMessages = conversationWithMessages.messages.map(
-        convertBackendMessage,
-      );
-
-      setMessages(convertedMessages);
-      setAttachedAssets([]);
-
-      // Clear unread indicator if the conversation had one
-      if (conversation.hasUnreadResponse) {
-        markSessionRead(conversation.id).catch(() => {});
-        queryClient.invalidateQueries({ queryKey: ["session-status"] });
-      }
-    } catch (error) {
-      console.error("Failed to load conversation:", error);
-    } finally {
-      setIsLoadingConversation(false);
-    }
   };
 
   const handleSelectConversation = (conversation: ConversationSummary) => {
@@ -647,289 +312,11 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     }
   };
 
-  const detectContentLinks = (text: string): ContentLink[] => {
-    const links: ContentLink[] = [];
-    const linkPattern =
-      /(\/(?:bookmarks|documents|photos|tasks|notes)\/[a-zA-Z0-9_-]+)/g;
-    const matches = text.match(linkPattern);
-    if (matches) {
-      matches.forEach((match) => {
-        const [, type, id] = match.split("/");
-        if (type && id) {
-          links.push({
-            type: type.slice(0, -1) as ContentLink["type"],
-            id,
-            url: match,
-            title: `${type.slice(0, -1)} ${id}`,
-          });
-        }
-      });
-    }
-    return links;
-  };
-
-  const fetchContentMetadata = async (
-    link: ContentLink,
-  ): Promise<ContentLink> => {
-    try {
-      if (link.type === "bookmark") {
-        const response = await apiFetch(`/api/bookmarks/${link.id}`);
-        if (response.ok) {
-          const bookmark: BookmarkType = await response.json();
-          return {
-            ...link,
-            title: bookmark.title || "Untitled Bookmark",
-            description: bookmark.description || "No description available",
-            metadata: {
-              originalUrl: bookmark.url,
-              tags: bookmark.tags,
-              status: bookmark.processingStatus,
-              createdAt: bookmark.createdAt,
-              author: bookmark.author,
-              faviconStorageId: bookmark.faviconUrl,
-              screenshotDesktopStorageId: bookmark.thumbnailUrl,
-              reviewStatus: bookmark.reviewStatus,
-              flagColor: bookmark.flagColor,
-              isPinned: bookmark.isPinned,
-            },
-          };
-        }
-      } else if (link.type === "document") {
-        const response = await apiFetch(`/api/documents/${link.id}`);
-        if (response.ok) {
-          const document = await response.json();
-          return {
-            ...link,
-            title: document.title || "Untitled Document",
-            description: document.description || "No description available",
-            metadata: {
-              originalFilename: document.originalFilename,
-              mimeType: document.mimeType,
-              fileSize: document.fileSize,
-              fileUrl: document.fileUrl,
-              thumbnailUrl: document.thumbnailUrl,
-              screenshotUrl: document.screenshotUrl,
-              pdfUrl: document.pdfUrl,
-              contentUrl: document.contentUrl,
-              tags: document.tags,
-              status: document.processingStatus,
-              createdAt: document.createdAt,
-              reviewStatus: document.reviewStatus,
-              flagColor: document.flagColor,
-              isPinned: document.isPinned,
-              dueDate: document.dueDate,
-            },
-          };
-        }
-      } else if (link.type === "photo") {
-        const response = await apiFetch(`/api/photos/${link.id}`);
-        if (response.ok) {
-          const photo = await response.json();
-          return {
-            ...link,
-            title: photo.title || "Untitled Photo",
-            description: photo.description || "No description available",
-            metadata: {
-              originalFilename: photo.originalFilename,
-              mimeType: photo.mimeType,
-              fileSize: photo.fileSize,
-              imageUrl: photo.imageUrl,
-              thumbnailUrl: photo.thumbnailUrl,
-              originalUrl: photo.originalUrl,
-              convertedJpgUrl: photo.convertedJpgUrl,
-              imageWidth: photo.imageWidth,
-              imageHeight: photo.imageHeight,
-              cameraMake: photo.cameraMake,
-              cameraModel: photo.cameraModel,
-              lensModel: photo.lensModel,
-              iso: photo.iso,
-              fNumber: photo.fNumber,
-              exposureTime: photo.exposureTime,
-              latitude: photo.latitude,
-              longitude: photo.longitude,
-              locationCity: photo.locationCity,
-              locationCountryName: photo.locationCountryName,
-              photoType: photo.photoType,
-              extractedText: photo.extractedText,
-              dominantColors: photo.dominantColors,
-              tags: photo.tags,
-              status: photo.processingStatus,
-              createdAt: photo.createdAt,
-              reviewStatus: photo.reviewStatus,
-              flagColor: photo.flagColor,
-              isPinned: photo.isPinned,
-              dueDate: photo.dueDate,
-              dateTaken: photo.dateTaken,
-            },
-          };
-        }
-      } else if (link.type === "task") {
-        const response = await apiFetch(`/api/tasks/${link.id}`);
-        if (response.ok) {
-          const task = await response.json();
-          return {
-            ...link,
-            title: task.title || "Untitled Task",
-            description: task.description || "No description available",
-            metadata: {
-              status: task.status,
-              dueDate: task.dueDate,
-              assigneeActorId: task.assigneeActorId,
-              tags: task.tags,
-              processingStatus: task.processingStatus,
-              createdAt: task.createdAt,
-              reviewStatus: task.reviewStatus,
-              flagColor: task.flagColor,
-              isPinned: task.isPinned,
-              isRecurring: task.isRecurring,
-              cronExpression: task.cronExpression,
-              nextRunAt: task.nextRunAt,
-              lastRunAt: task.lastRunAt,
-              completedAt: task.completedAt,
-            },
-          };
-        }
-      } else if (link.type === "note") {
-        const response = await apiFetch(`/api/notes/${link.id}`);
-        if (response.ok) {
-          const note = await response.json();
-          return {
-            ...link,
-            title: note.title || "Untitled Note",
-            description:
-              note.description ||
-              note.content?.substring(0, 200) +
-                (note.content?.length > 200 ? "..." : "") ||
-              "No content available",
-            metadata: {
-              content: note.content,
-              tags: note.tags,
-              status: note.processingStatus,
-              createdAt: note.createdAt,
-              reviewStatus: note.reviewStatus,
-              flagColor: note.flagColor,
-              isPinned: note.isPinned,
-              dueDate: note.dueDate,
-              originalMimeType: note.originalMimeType,
-            },
-          };
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch metadata for link:", link, error);
-    }
-    return link;
-  };
-
-  const handleSend = async (textOverride?: string) => {
-    const messageText = textOverride || input;
-    if (!messageText.trim()) return;
-
-    // Wait for preferences to be loaded to ensure correct enableThinking value
-    if (!preferencesLoaded) {
-      return;
-    }
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: messageText,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-    const currentInput = messageText;
-    setInput("");
-
-    // Set loading state immediately for instant user feedback
-    flushSync(() => {
-      setIsStreaming(true);
-      setStreamingThought("");
-      setStreamingText("");
-      finalStreamingTextRef.current = "";
-      resetBatchingState();
-    });
-    clearTools();
-
-    try {
-      // Lazy session creation on first message
-      let sessionId = currentConversation?.id;
-      if (!sessionId) {
-        const session = await createSession({
-          agentActorId: assistantAgentId,
-        });
-        sessionId = session.id;
-        setCurrentConversation(session);
-      }
-
-      const streamingRequest: StreamingRequest = {
-        sessionId,
-        prompt: currentInput,
-        enableThinking: assistantPreferences.showThinkingTokens,
-        context:
-          attachedAssets.length > 0
-            ? {
-                agentActorId: assistantAgentId,
-                assets: attachedAssets.map((asset) => ({
-                  type: asset.type,
-                  id: asset.id,
-                })),
-              }
-            : { agentActorId: assistantAgentId },
-      };
-
-      await streamingClient.startStream?.(streamingRequest);
-    } catch (error) {
-      console.error("Streaming error:", error);
-      setIsStreaming(false);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content:
-          "I'm sorry, I encountered an error while processing your request. Please try again.",
-        timestamp: new Date(),
-        isError: true,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    }
-  };
-
   const handleKeyDownBase = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const startNewConversation = () => {
-    // Abort server-side execution if streaming
-    if (isStreaming && currentConversation?.id) {
-      abortSession(currentConversation.id).catch(() => {});
-    }
-    streamingClient.disconnect?.();
-
-    messages.forEach((message) => {
-      if (message.imageUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(message.imageUrl);
-      }
-    });
-    setCurrentConversation(null);
-    setAttachedAssets([]);
-    setMessages([
-      {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "Hello! I'm your AI assistant. How can I help you today?",
-        timestamp: new Date(),
-      },
-    ]);
-
-    // Reset streaming state
-    setIsStreaming(false);
-    setStreamingThought("");
-    setStreamingText("");
-    finalStreamingTextRef.current = "";
-    resetBatchingState();
-    clearTools();
   };
 
   // Agent dropdown options for the assistant panel
@@ -1010,133 +397,23 @@ export function MainLayoutClient({ children }: MainLayoutClientProps) {
     (window as any).openAssistantWithAssets = openAssistantWithAssets;
   }
 
-  // Resize functionality
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isResizing) return;
-
-      const containerRect = document
-        .querySelector(".main-layout-container")
-        ?.getBoundingClientRect();
-      if (!containerRect) return;
-
-      // Calculate new width from the right edge of the container
-      const newWidth = containerRect.right - e.clientX;
-
-      // Set min and max constraints (280px min, 800px max)
-      const minWidth = 280;
-      const maxWidth = 800;
-      const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
-
-      setAssistantWidth(constrainedWidth);
-    },
-    [isResizing],
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      // Prevent text selection while resizing
-      document.body.style.userSelect = "none";
-      document.body.style.cursor = "col-resize";
-
-      return () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-        document.body.style.userSelect = "";
-        document.body.style.cursor = "";
-      };
-    }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
-
   // Conditional rendering for mobile vs desktop
   if (isMobile) {
-    // Render different content based on active mobile tab
-    const renderMobileContent = () => {
-      switch (currentMobileTab) {
-        case "chat":
-          return (
-            <MobileChatView
-              messages={messages}
-              isLoading={isLoadingConversation}
-              messagesEndRef={messagesEndRef}
-              attachedAssets={attachedAssets}
-              setAttachedAssets={setAttachedAssets}
-              input={input}
-              inputRef={inputRef}
-              setInput={setInput}
-              handleKeyDown={handleKeyDown}
-              handleSend={handleSendWithSlash}
-              startNewConversation={startNewConversation}
-              currentConversation={currentConversation}
-              onEditConversationTitle={handleEditConversationTitle}
-              onSelectConversation={handleSelectConversation}
-              onDeleteConversation={handleDeleteConversation}
-              onDeleteAllConversations={handleDeleteAllConversations}
-              isStreaming={isStreaming}
-              streamingThought={streamingThought}
-              streamingText={streamingText}
-              streamingToolCalls={streamingToolCalls}
-              onApproveToolCall={handleApproveToolCall}
-              onDenyToolCall={handleDenyToolCall}
-              showThinkingTokens={assistantPreferences.showThinkingTokens}
-              slashPalette={slashPaletteConfig}
-            />
-          );
-        case "folders":
-          return (
-            <>
-              <main className="p-4">{children}</main>
-              <MobileFoldersView
-                open={foldersSheetOpen}
-                onClose={() => {
-                  setFoldersSheetOpen(false);
-                  setCurrentMobileTab("chat");
-                }}
-              />
-            </>
-          );
-        default:
-          // home, settings, or any other tab shows regular content
-          return <main className="p-4">{children}</main>;
-      }
-    };
-
     return (
-      <MobileNavigationProvider
-        value={{
-          currentMobileTab,
-          setCurrentMobileTab,
-          foldersSheetOpen,
-          setFoldersSheetOpen,
-          chatOpen,
-          setChatOpen,
-        }}
+      <DashboardMobileLayout
+        chat={chat}
+        showThinkingTokens={assistantPreferences.showThinkingTokens}
+        handleSend={handleSendWithSlash}
+        handleKeyDown={handleKeyDown}
+        startNewConversation={startNewConversation}
+        onSelectConversation={handleSelectConversation}
+        onEditConversationTitle={handleEditConversationTitle}
+        onDeleteConversation={handleDeleteConversation}
+        onDeleteAllConversations={handleDeleteAllConversations}
+        slashPalette={slashPaletteConfig}
       >
-        <MobileLayout
-          activeTab={currentMobileTab}
-          onTabChange={handleMobileTabChange}
-          onChatToggle={() => {
-            setCurrentMobileTab("chat");
-          }}
-          onFoldersToggle={() => {
-            setCurrentMobileTab("folders");
-            setFoldersSheetOpen(true);
-          }}
-        >
-          {renderMobileContent()}
-        </MobileLayout>
-      </MobileNavigationProvider>
+        {children}
+      </DashboardMobileLayout>
     );
   }
 
