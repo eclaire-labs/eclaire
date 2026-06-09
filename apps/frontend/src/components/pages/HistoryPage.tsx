@@ -1,9 +1,17 @@
-import { useQuery } from "@tanstack/react-query";
-import { Calendar, Clock, Filter, Search, User, X } from "lucide-react";
-import { useState } from "react";
+import {
+  Calendar,
+  Clock,
+  Filter,
+  Loader2,
+  Search,
+  User,
+  X,
+} from "lucide-react";
+import { useRef, useState } from "react";
 
 import { AIAvatar } from "@/components/assistant/ai-avatar";
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
+import { PageError, PageLoading } from "@/components/shared/page-state";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,46 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/use-auth";
+import { type HistoryItem, useHistory } from "@/hooks/use-history";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { apiFetch } from "@/lib/api-client";
-
-// Types for history items (matching the API response structure)
-type HistoryAction =
-  | "create"
-  | "update"
-  | "delete"
-  | "api_call"
-  | "ai_prompt_image_response"
-  | "ai_prompt_text_response"
-  | "ai_prompt_error"
-  | "api_content_upload"
-  | "api_error_general";
-
-type HistoryItemType =
-  | "task"
-  | "note"
-  | "bookmark"
-  | "document"
-  | "photo"
-  | "api"
-  | "prompt"
-  | "api_error"
-  | "content_submission";
-
-type HistoryActor = "human" | "agent" | "system" | "service";
-
-// Interface for history item
-interface HistoryItem {
-  id: string;
-  action: HistoryAction;
-  itemType: HistoryItemType;
-  itemId: string;
-  itemName: string;
-  beforeData: any | null;
-  afterData: any | null;
-  actor: HistoryActor;
-  timestamp: string;
-}
 
 export default function HistoryPage() {
   const isMobile = useIsMobile();
@@ -74,23 +45,28 @@ export default function HistoryPage() {
   const [filterItemType, setFilterItemType] = useState("all");
   const [filterActor, setFilterActor] = useState("all");
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch history from API using React Query
-  const { data: history = [], isLoading } = useQuery<HistoryItem[]>({
-    queryKey: ["history"],
-    queryFn: async () => {
-      const response = await apiFetch("/api/history?limit=9999");
-      if (!response.ok) {
-        throw new Error("Failed to load history");
-      }
-      const data = await response.json();
-      return data.items;
-    },
-    staleTime: 2 * 60 * 1000,
+  // Fetch history with infinite (offset-based) pagination
+  const {
+    items: history,
+    totalCount,
+    isLoading,
+    error,
+    refresh,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useHistory();
+
+  const { sentinelRef } = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
   });
 
-  // Ensure history is always an array before filtering
-  const filteredHistory = (history || []).filter((item) => {
+  // Client-side filters applied over the loaded pages
+  const filteredHistory = history.filter((item) => {
     // Search filter
     const matchesSearch =
       (item.itemName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -127,16 +103,10 @@ export default function HistoryPage() {
     setFilterActor("all");
   };
 
-  // Clear search input
+  // Clear search input and refocus it
   const clearSearch = () => {
     setSearchQuery("");
-    // Focus the input after clearing
-    const searchInput = document.querySelector(
-      'input[placeholder="Search history..."]',
-    ) as HTMLInputElement;
-    if (searchInput) {
-      searchInput.focus();
-    }
+    searchInputRef.current?.focus();
   };
 
   const formatDate = (dateString: string) => {
@@ -428,6 +398,16 @@ export default function HistoryPage() {
     </Dialog>
   );
 
+  if (error) {
+    return (
+      <PageError
+        title="Failed to load history"
+        message={error.message}
+        onRetry={() => refresh()}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -435,11 +415,11 @@ export default function HistoryPage() {
         <div>
           <h1 className="text-lg md:text-3xl font-bold md:tracking-tight">
             History
-            {history.length > 0 && (
+            {totalCount !== undefined && totalCount > 0 && (
               <span className="ml-2 text-sm md:text-base font-normal text-muted-foreground">
                 {filteredHistory.length === history.length
-                  ? `(${history.length})`
-                  : `(${filteredHistory.length} of ${history.length})`}
+                  ? `(${totalCount})`
+                  : `(${filteredHistory.length} of ${totalCount})`}
               </span>
             )}
           </h1>
@@ -458,6 +438,7 @@ export default function HistoryPage() {
           <div className="relative flex-grow">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
+              ref={searchInputRef}
               placeholder="Search history..."
               className={`pl-8 w-full ${searchQuery ? "pr-8" : ""}`}
               value={searchQuery}
@@ -534,20 +515,7 @@ export default function HistoryPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 grid-cols-1">
-          {Array.from({ length: 5 }).map((_, index) => (
-            // oxlint-disable-next-line react/no-array-index-key -- static skeleton
-            <Card key={index} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-5 bg-muted rounded w-1/4 mb-2"></div>
-                <div className="h-4 bg-muted rounded w-1/2"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-4 bg-muted rounded w-3/4 mt-2"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <PageLoading variant="list" />
       ) : filteredHistory.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center p-6">
@@ -620,6 +588,13 @@ export default function HistoryPage() {
           ))}
         </div>
       )}
+
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="flex justify-center py-4">
+        {isFetchingNextPage && (
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        )}
+      </div>
 
       {/* Filter Dialog */}
       <FilterSortDialog />

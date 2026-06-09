@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   AlertCircle,
@@ -10,59 +9,13 @@ import {
   ThumbsUp,
   XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { apiFetch } from "@/lib/api-client";
+import { useInbox, useInboxTaskAction } from "@/hooks/use-inbox";
 import { formatDate } from "@/lib/date-utils";
-import { useSSEConnectionStatus } from "@/providers/ProcessingEventsProvider";
-import type { InboxResponse, InboxTask } from "@/types/task";
-
-function useInbox() {
-  const { isConnected } = useSSEConnectionStatus();
-  return useQuery<InboxResponse>({
-    queryKey: ["inbox"],
-    queryFn: async () => {
-      const res = await apiFetch("/api/tasks/inbox");
-      if (!res.ok) throw new Error("Failed to fetch inbox");
-      return res.json();
-    },
-    // Only poll when SSE is disconnected; SSE invalidation handles the live case
-    refetchInterval: isConnected ? false : 30_000,
-  });
-}
-
-function useTaskAction() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      taskId,
-      action,
-      body,
-    }: {
-      taskId: string;
-      action: string;
-      body?: Record<string, unknown>;
-    }) => {
-      const res = await apiFetch(`/api/tasks/${taskId}/${action}`, {
-        method: "POST",
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (!res.ok) throw new Error(`Failed to ${action}`);
-      return res.json();
-    },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["inbox"] }),
-        queryClient.invalidateQueries({ queryKey: ["inbox-count"] }),
-        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
-      ]);
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-}
+import type { InboxTask } from "@/types/task";
 
 function InboxSection({
   title,
@@ -140,7 +93,7 @@ function InboxSection({
 
 export default function InboxPage() {
   const { data: inbox, isLoading, error } = useInbox();
-  const action = useTaskAction();
+  const action = useInboxTaskAction();
 
   if (isLoading) {
     return (
