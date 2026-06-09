@@ -8,7 +8,6 @@ import {
   Loader2,
   UploadCloud,
 } from "lucide-react";
-import { nanoid } from "nanoid";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
@@ -16,63 +15,28 @@ import { toast } from "sonner";
 
 import type { ViewModeDef } from "@/components/list-page";
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
-import { TagEditor } from "@/components/shared/TagEditor";
-import type { UploadingFile } from "@/components/shared/UploadProgressList";
+import { PhotoEditDialog } from "@/components/photos/PhotoEditDialog";
+import { PhotoViewDialog } from "@/components/photos/PhotoViewDialog";
 import { UploadProgressList } from "@/components/shared/UploadProgressList";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { useListKeyboardNavigation } from "@/hooks/use-list-keyboard-navigation";
 import { useListPageState } from "@/hooks/use-list-page-state";
+import {
+  ALLOWED_UPLOAD_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  MAX_FILE_SIZE_MB,
+  usePhotoUpload,
+} from "@/hooks/use-photo-upload";
 import { usePhotos } from "@/hooks/use-photos";
 import { useTags } from "@/hooks/use-tags";
-import { apiFetch } from "@/lib/api-client";
-import { formatDate } from "@/lib/list-page-utils";
 import type { EditPhotoState, Photo } from "@/types/photo";
 
-import {
-  formatDimensions,
-  formatExposureTime,
-  formatFileSize,
-  formatFNumber,
-  formatLocation,
-} from "./photos/photo-utils";
 import { PhotoGalleryView } from "./photos/PhotoGalleryView";
 import { PhotoListItem } from "./photos/PhotoListItem";
 import { photosConfig } from "./photos/photos-config";
 import { PhotoTileItem } from "./photos/PhotoTileItem";
-
-// ---------------------------------------------------------------------------
-// Upload constants
-// ---------------------------------------------------------------------------
-
-const MAX_FILE_SIZE_MB = 25;
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const ALLOWED_UPLOAD_TYPES = {
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-  "image/gif": [".gif"],
-  "image/webp": [".webp"],
-  "image/heic": [".heic"],
-  "image/heif": [".heif"],
-  "image/avif": [".avif"],
-  "image/svg+xml": [".svg"],
-  "image/tiff": [".tiff", ".tif"],
-  "image/bmp": [".bmp"],
-};
 
 // ---------------------------------------------------------------------------
 // View mode definitions (Photos has 3 modes: tile, list, gallery)
@@ -131,8 +95,11 @@ export default function PhotosPage() {
   const [isEditPhotoDialogOpen, setIsEditPhotoDialogOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [editingPhoto, setEditingPhoto] = useState<EditPhotoState | null>(null);
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+
+  const { uploadingFiles, handleUpload, clearCompleted } = usePhotoUpload({
+    refresh,
+  });
 
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -231,17 +198,6 @@ export default function PhotosPage() {
     handleViewModeChange,
   };
 
-  // --- Form Input Handlers (Edit Dialog) ---
-
-  const handleEditingPhotoChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-    setEditingPhoto((prev) =>
-      prev ? { ...prev, [name]: value === null ? null : value } : null,
-    );
-  };
-
   // --- API Action Handlers ---
 
   const handleUpdatePhoto = async (event: React.FormEvent) => {
@@ -268,93 +224,6 @@ export default function PhotosPage() {
       console.error("Update photo error:", err);
     }
   };
-
-  // --- Upload Handling ---
-  const handleUpload = useCallback(
-    async (acceptedFiles: File[]) => {
-      const newUploads: UploadingFile[] = acceptedFiles.map((file) => ({
-        id: nanoid(),
-        file,
-        progress: 0,
-        status: "pending",
-      }));
-
-      setUploadingFiles((prev) => [...newUploads, ...prev]);
-
-      for (const upload of newUploads) {
-        setUploadingFiles((prev) =>
-          prev.map((f) =>
-            f.id === upload.id ? { ...f, status: "uploading" } : f,
-          ),
-        );
-
-        const formData = new FormData();
-        const metadata = {
-          title: upload.file.name.replace(/\.[^/.]+$/, ""),
-          description: "",
-          tags: [],
-          originalFilename: upload.file.name,
-        };
-        formData.append("metadata", JSON.stringify(metadata));
-        formData.append("content", upload.file);
-
-        try {
-          setUploadingFiles((prev) =>
-            prev.map((f) => (f.id === upload.id ? { ...f, progress: 50 } : f)),
-          );
-
-          const response = await apiFetch("/api/photos", {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorData = await response
-              .json()
-              .catch(() => ({ error: `Upload failed (${response.status})` }));
-            throw new Error(
-              errorData.error || `Failed to upload ${upload.file.name}`,
-            );
-          }
-
-          const createdPhoto = (await response.json()) as Photo;
-          refresh();
-
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id
-                ? {
-                    ...f,
-                    status: "success",
-                    progress: 100,
-                    photoId: createdPhoto.id,
-                  }
-                : f,
-            ),
-          );
-
-          toast.success("Upload Successful", {
-            description: `"${createdPhoto.title}" added.`,
-          });
-        } catch (err) {
-          console.error("Error uploading file:", upload.file.name, err);
-          const message =
-            err instanceof Error ? err.message : "An unknown error occurred.";
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === upload.id
-                ? { ...f, status: "error", error: message, progress: 0 }
-                : f,
-            ),
-          );
-          toast.error("Upload Error", {
-            description: `Failed to upload ${upload.file.name}: ${message}`,
-          });
-        }
-      }
-    },
-    [refresh],
-  );
 
   const {
     getRootProps,
@@ -465,13 +334,7 @@ export default function PhotosPage() {
         uploadingFiles.length > 0 ? (
           <UploadProgressList
             uploads={uploadingFiles}
-            onClearComplete={() =>
-              setUploadingFiles((prev) =>
-                prev.filter(
-                  (f) => f.status !== "success" && f.status !== "error",
-                ),
-              )
-            }
+            onClearComplete={clearCompleted}
           />
         ) : undefined
       }
@@ -489,393 +352,23 @@ export default function PhotosPage() {
       dialogs={
         <>
           {/* View Photo Details Dialog */}
-          <Dialog
+          <PhotoViewDialog
             open={isViewPhotoDialogOpen}
             onOpenChange={setIsViewPhotoDialogOpen}
-          >
-            <DialogContent className="sm:max-w-4xl">
-              <DialogHeader>
-                <DialogTitle className="truncate">
-                  {selectedPhoto?.title ?? "Photo Details"}
-                </DialogTitle>
-                <DialogDescription>
-                  Taken on{" "}
-                  {selectedPhoto
-                    ? formatDate(
-                        selectedPhoto.dateTaken ?? selectedPhoto.createdAt,
-                      )
-                    : "N/A"}
-                </DialogDescription>
-              </DialogHeader>
-              {selectedPhoto && (
-                <div className="grid md:grid-cols-3 gap-6 py-4 max-h-[75vh] overflow-y-auto pr-2">
-                  <div className="md:col-span-2 aspect-video overflow-hidden rounded-md bg-muted flex items-center justify-center">
-                    <img
-                      src={selectedPhoto.thumbnailUrl || "/placeholder.svg"}
-                      alt={selectedPhoto.title}
-                      className="object-contain max-w-full max-h-[70vh]"
-                      onError={(e) => {
-                        const img = e.target as HTMLImageElement;
-                        const retryCount = parseInt(
-                          img.dataset.retryCount || "0",
-                          10,
-                        );
-                        if (retryCount < 1) {
-                          img.dataset.retryCount = String(retryCount + 1);
-                          img.src = "/placeholder.svg";
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-4 text-sm md:col-span-1">
-                    {/* Basic Info */}
-                    <h3 className="font-semibold mb-2 border-b pb-1 text-base">
-                      Information
-                    </h3>
-                    <div className="space-y-2.5">
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Description
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.description || (
-                            <span className="italic text-muted-foreground">
-                              No description.
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Tags
-                        </Label>
-                        {selectedPhoto.tags.length > 0 ? (
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {selectedPhoto.tags.map((tag) => (
-                              <Badge
-                                key={tag}
-                                variant="secondary"
-                                className="font-normal"
-                              >
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="mt-0.5 italic text-muted-foreground">
-                            No tags.
-                          </p>
-                        )}
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Filename
-                        </Label>
-                        <p className="mt-0.5 truncate">
-                          {selectedPhoto.originalFilename}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          File Size / Type
-                        </Label>
-                        <p className="mt-0.5">
-                          {formatFileSize(selectedPhoto.fileSize)} (
-                          {selectedPhoto.mimeType})
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Dimensions
-                        </Label>
-                        <p className="mt-0.5">
-                          {formatDimensions(
-                            selectedPhoto.imageWidth,
-                            selectedPhoto.imageHeight,
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* EXIF Details */}
-                    <h3 className="font-semibold mb-2 border-b pb-1 pt-3 text-base">
-                      Camera Details
-                    </h3>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Camera
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.cameraMake ||
-                          selectedPhoto.cameraModel ? (
-                            `${selectedPhoto.cameraMake || ""} ${selectedPhoto.cameraModel || ""}`.trim()
-                          ) : (
-                            <span className="italic text-muted-foreground">
-                              N/A
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Lens
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.lensModel || (
-                            <span className="italic text-muted-foreground">
-                              N/A
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Aperture
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.fNumber ? (
-                            formatFNumber(selectedPhoto.fNumber)
-                          ) : (
-                            <span className="italic text-muted-foreground">
-                              N/A
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Shutter Speed
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.exposureTime ? (
-                            formatExposureTime(selectedPhoto.exposureTime)
-                          ) : (
-                            <span className="italic text-muted-foreground">
-                              N/A
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          ISO
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.iso ?? (
-                            <span className="italic text-muted-foreground">
-                              N/A
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Device ID
-                        </Label>
-                        <p className="mt-0.5">
-                          {selectedPhoto.deviceId || (
-                            <span className="italic text-muted-foreground">
-                              N/A
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Location Details */}
-                    <h3 className="font-semibold mb-2 border-b pb-1 pt-3 text-base">
-                      Location
-                    </h3>
-                    <div className="space-y-2.5">
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Place
-                        </Label>
-                        <p className="mt-0.5">
-                          {formatLocation(
-                            selectedPhoto.locationCity,
-                            selectedPhoto.locationCountryName,
-                          ) ?? (
-                            <span className="italic text-muted-foreground">
-                              No location data
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      {selectedPhoto.latitude && selectedPhoto.longitude && (
-                        <div>
-                          <Label className="text-xs text-muted-foreground font-medium">
-                            Coordinates
-                          </Label>
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${selectedPhoto.latitude},${selectedPhoto.longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline mt-0.5"
-                          >
-                            <span>
-                              {selectedPhoto.latitude.toFixed(5)},{" "}
-                              {selectedPhoto.longitude.toFixed(5)}
-                            </span>
-                          </a>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Timestamps */}
-                    <h3 className="font-semibold mb-2 border-b pb-1 pt-3 text-base">
-                      Timestamps
-                    </h3>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Date Taken
-                        </Label>
-                        <p className="mt-0.5">
-                          {formatDate(selectedPhoto.dateTaken)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Date Uploaded
-                        </Label>
-                        <p className="mt-0.5">
-                          {formatDate(selectedPhoto.createdAt)}
-                        </p>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground font-medium">
-                          Last Updated
-                        </Label>
-                        <p className="mt-0.5">
-                          {formatDate(selectedPhoto.updatedAt)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <DialogFooter className="sm:justify-between gap-2 pt-4 border-t mt-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => {
-                    setIsViewPhotoDialogOpen(false);
-                    if (selectedPhoto)
-                      state.openDeleteDialog(
-                        selectedPhoto.id,
-                        selectedPhoto.title,
-                      );
-                  }}
-                >
-                  Delete
-                </Button>
-                <div className="flex gap-2">
-                  <DialogClose asChild>
-                    <Button variant="outline" size="sm">
-                      Close
-                    </Button>
-                  </DialogClose>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => {
-                      setIsViewPhotoDialogOpen(false);
-                      if (selectedPhoto) openEditDialog(selectedPhoto);
-                    }}
-                  >
-                    Edit Metadata
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            photo={selectedPhoto}
+            onDelete={(p) => state.openDeleteDialog(p.id, p.title)}
+            onEdit={openEditDialog}
+          />
 
           {/* Edit Photo Metadata Dialog */}
-          <Dialog
+          <PhotoEditDialog
             open={isEditPhotoDialogOpen}
             onOpenChange={setIsEditPhotoDialogOpen}
-          >
-            <DialogContent className="sm:max-w-lg">
-              <form onSubmit={handleUpdatePhoto}>
-                <DialogHeader>
-                  <DialogTitle>Edit Photo Metadata</DialogTitle>
-                  <DialogDescription>
-                    Make changes to the details of "{editingPhoto?.title}". File
-                    content and EXIF data cannot be changed here.
-                  </DialogDescription>
-                </DialogHeader>
-                {editingPhoto && (
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-title">
-                        Title <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="edit-title"
-                        name="title"
-                        value={editingPhoto.title}
-                        onChange={handleEditingPhotoChange}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-description">Description</Label>
-                      <Textarea
-                        id="edit-description"
-                        name="description"
-                        rows={3}
-                        value={editingPhoto.description ?? ""}
-                        onChange={handleEditingPhotoChange}
-                      />
-                    </div>
-                    <TagEditor
-                      tags={editingPhoto.tags}
-                      onAddTag={(tag) =>
-                        setEditingPhoto({
-                          ...editingPhoto,
-                          tags: [...editingPhoto.tags, tag],
-                        })
-                      }
-                      onRemoveTag={(tag) =>
-                        setEditingPhoto({
-                          ...editingPhoto,
-                          tags: editingPhoto.tags.filter((t) => t !== tag),
-                        })
-                      }
-                    />
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-deviceId">Device ID</Label>
-                      <Input
-                        id="edit-deviceId"
-                        name="deviceId"
-                        value={editingPhoto.deviceId ?? ""}
-                        onChange={handleEditingPhotoChange}
-                        placeholder="e.g. iPhone 15 Pro"
-                      />
-                    </div>
-                  </div>
-                )}
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <Button
-                    type="submit"
-                    disabled={isUpdating || !editingPhoto?.title}
-                  >
-                    {isUpdating && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Save Changes
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+            editingPhoto={editingPhoto}
+            setEditingPhoto={setEditingPhoto}
+            onSubmit={handleUpdatePhoto}
+            isUpdating={isUpdating}
+          />
         </>
       }
     >

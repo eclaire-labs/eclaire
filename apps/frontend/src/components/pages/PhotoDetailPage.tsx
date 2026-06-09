@@ -1,16 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
-  AlertCircle,
   ArrowLeft,
   Calendar,
   Camera,
   Download,
   Edit,
   ExternalLink,
-  Eye,
-  Loader2,
-  MapPin,
   MessageCircle,
   RotateCcw,
   Save,
@@ -30,18 +26,17 @@ import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialo
 import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { PhotoAnalysisCard } from "@/components/photo-analysis";
+import { CameraInfoCard } from "@/components/photos/detail/CameraInfoCard";
+import { LocationCard } from "@/components/photos/detail/LocationCard";
+import { PhotoAssetsCard } from "@/components/photos/detail/PhotoAssetsCard";
+import { PhotoFullscreenView } from "@/components/photos/detail/PhotoFullscreenView";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PageError, PageLoading } from "@/components/shared/page-state";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,37 +45,21 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { usePhotoAnalysis } from "@/hooks/use-photo-analysis";
 import { usePhoto } from "@/hooks/use-photos";
-import { apiFetch, normalizeApiUrl } from "@/lib/api-client";
+import { normalizeApiUrl } from "@/lib/api-client";
 import { formatDate, formatFileSize } from "@/lib/date-utils";
 
-// Helper function to format camera settings
-const formatExposureTime = (exposureTime: number | null) => {
-  if (!exposureTime) return null;
-  if (exposureTime >= 1) return `${exposureTime}s`;
-  return `1/${Math.round(1 / exposureTime)}s`;
-};
+interface EditForm {
+  title: string;
+  description: string;
+  tags: string[];
+  dueDate: string | null;
+}
 
-const formatAperture = (fNumber: number | null) => {
-  if (!fNumber) return null;
-  return `f/${fNumber}`;
-};
-
-// Helper function to safely format coordinates
-const formatCoordinate = (
-  coord: number | string | null | undefined,
-): string | null => {
-  if (coord === null || coord === undefined) return null;
-
-  // Convert to number if it's a string
-  const numCoord = typeof coord === "string" ? parseFloat(coord) : coord;
-
-  // Check if it's a valid number
-  if (typeof numCoord === "number" && !Number.isNaN(numCoord)) {
-    return numCoord.toFixed(6);
-  }
-
-  // Return the original value as string if it can't be converted
-  return String(coord);
+const emptyEditForm: EditForm = {
+  title: "",
+  description: "",
+  tags: [],
+  dueDate: null,
 };
 
 export function PhotoDetailClient() {
@@ -89,7 +68,8 @@ export function PhotoDetailClient() {
   const queryClient = useQueryClient();
 
   // Use React Query hook for data fetching
-  const { photo, isLoading, error, refresh } = usePhoto(photoId);
+  const { photo, isLoading, error, refresh, update, isUpdating } =
+    usePhoto(photoId);
 
   // Fetch AI analysis data
   const {
@@ -114,21 +94,19 @@ export function PhotoDetailClient() {
 
   const [activeTab, setActiveTab] = useState("preview");
   const [isEditing, setIsEditing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
-  const [editTags, setEditTags] = useState<string[]>([]);
-  const [editDueDate, setEditDueDate] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>(emptyEditForm);
   const [imageScale, setImageScale] = useState(1);
   const [showFullscreen, setShowFullscreen] = useState(false);
 
   // Initialize editing state when photo loads
   useEffect(() => {
     if (photo && !isEditing) {
-      setEditTitle(photo.title || "");
-      setEditDescription(photo.description || "");
-      setEditTags(photo.tags || []);
-      setEditDueDate(photo.dueDate || null);
+      setEditForm({
+        title: photo.title || "",
+        description: photo.description || "",
+        tags: photo.tags || [],
+        dueDate: photo.dueDate || null,
+      });
     }
   }, [photo, isEditing]);
 
@@ -152,44 +130,30 @@ export function PhotoDetailClient() {
     if (!photo) return;
 
     try {
-      setIsSubmitting(true);
-      const response = await apiFetch(`/api/photos/${photoId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          title: editTitle,
-          description: editDescription || null,
-          tags: editTags,
-          dueDate: editDueDate,
-        }),
+      await update({
+        title: editForm.title,
+        description: editForm.description || null,
+        tags: editForm.tags,
+        dueDate: editForm.dueDate,
       });
-
-      if (response.ok) {
-        setIsEditing(false);
-        // Refresh to get the latest data from server
-        refresh();
-        toast.success("Photo updated", {
-          description: "Your changes have been saved successfully.",
-        });
-      } else {
-        throw new Error("Failed to update photo");
-      }
-    } catch (error) {
-      console.error("Error updating photo:", error);
-      toast.error("Error", {
-        description: "Failed to save changes.",
+      setIsEditing(false);
+      toast.success("Photo updated", {
+        description: "Your changes have been saved successfully.",
       });
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      // Error toast is handled by the hook
     }
   };
 
   // Handle cancel editing
   const handleCancel = () => {
     if (!photo) return;
-    setEditTitle(photo.title || "");
-    setEditDescription(photo.description || "");
-    setEditTags(photo.tags || []);
-    setEditDueDate(photo.dueDate || null);
+    setEditForm({
+      title: photo.title || "",
+      description: photo.description || "",
+      tags: photo.tags || [],
+      dueDate: photo.dueDate || null,
+    });
     setIsEditing(false);
   };
 
@@ -200,64 +164,23 @@ export function PhotoDetailClient() {
   const handleResetZoom = () => setImageScale(1);
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate({ to: "/photos" })}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+    return <PageLoading variant="detail" backTo="/photos" />;
   }
 
-  if (error || (!isLoading && !photo)) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Photo not found";
+  if (error || !photo) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate({ to: "/photos" })}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Photo not found</h1>
-        </div>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{errorMessage}</h2>
-          <p className="text-muted-foreground mb-4">
-            The photo you're looking for doesn't exist or couldn't be loaded.
-          </p>
-          <Button onClick={() => navigate({ to: "/photos" })}>
-            Go to Photos
-          </Button>
-        </div>
-      </div>
+      <PageError
+        title="Photo not found"
+        message={
+          error instanceof Error
+            ? error.message
+            : "The photo you're looking for doesn't exist or couldn't be loaded."
+        }
+        backTo="/photos"
+        backLabel="Go to Photos"
+      />
     );
   }
-
-  // At this point photo should be defined since we checked for loading/error above
-  if (!photo) return null;
 
   return (
     <TooltipProvider>
@@ -275,8 +198,10 @@ export function PhotoDetailClient() {
             <div>
               {isEditing ? (
                 <Input
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
+                  value={editForm.title}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({ ...prev, title: e.target.value }))
+                  }
                   placeholder="Enter photo title..."
                   className="text-2xl font-bold h-auto py-2 px-3 border-dashed"
                 />
@@ -314,14 +239,14 @@ export function PhotoDetailClient() {
                 <Button
                   variant="outline"
                   onClick={handleCancel}
-                  disabled={isSubmitting}
+                  disabled={isUpdating}
                 >
                   <X className="mr-2 h-4 w-4" />
                   Cancel
                 </Button>
-                <Button onClick={handleSave} disabled={isSubmitting}>
+                <Button onClick={handleSave} disabled={isUpdating}>
                   <Save className="mr-2 h-4 w-4" />
-                  {isSubmitting ? "Saving..." : "Save"}
+                  {isUpdating ? "Saving..." : "Save"}
                 </Button>
               </>
             ) : (
@@ -440,8 +365,13 @@ export function PhotoDetailClient() {
               isEditing={isEditing}
               DescriptionEditor={
                 <Textarea
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
+                  value={editForm.description}
+                  onChange={(e) =>
+                    setEditForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   placeholder="Add a description for this photo..."
                   rows={4}
                   className="mt-1"
@@ -493,8 +423,10 @@ export function PhotoDetailClient() {
                     {isEditing ? (
                       <div className="mt-1">
                         <DueDatePicker
-                          value={editDueDate}
-                          onChange={setEditDueDate}
+                          value={editForm.dueDate}
+                          onChange={(dueDate) =>
+                            setEditForm((prev) => ({ ...prev, dueDate }))
+                          }
                         />
                       </div>
                     ) : (
@@ -510,12 +442,18 @@ export function PhotoDetailClient() {
                   <div>
                     {isEditing ? (
                       <TagEditor
-                        tags={editTags}
+                        tags={editForm.tags}
                         onAddTag={(tag) =>
-                          setEditTags((prev) => [...prev, tag])
+                          setEditForm((prev) => ({
+                            ...prev,
+                            tags: [...prev.tags, tag],
+                          }))
                         }
                         onRemoveTag={(tag) =>
-                          setEditTags((prev) => prev.filter((t) => t !== tag))
+                          setEditForm((prev) => ({
+                            ...prev,
+                            tags: prev.tags.filter((t) => t !== tag),
+                          }))
                         }
                       />
                     ) : (
@@ -593,208 +531,23 @@ export function PhotoDetailClient() {
             </Card>
 
             {/* Photo Assets */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Photo Assets</CardTitle>
-                <CardDescription>
-                  Available files and formats for this photo
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Button size="sm" variant="outline" asChild>
-                    <a
-                      href={normalizeApiUrl(photo.originalUrl)}
-                      download={photo.originalFilename}
-                    >
-                      <Camera className="mr-2 h-4 w-4" />
-                      Original Photo
-                    </a>
-                  </Button>
-                  {photo.thumbnailUrl && (
-                    <Button size="sm" variant="outline" asChild>
-                      <a
-                        href={normalizeApiUrl(photo.thumbnailUrl)}
-                        download={`${photo.title || "photo"}-thumbnail.webp`}
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        Thumbnail
-                      </a>
-                    </Button>
-                  )}
-                  {photo.convertedJpgUrl && (
-                    <Button size="sm" variant="outline" asChild>
-                      <a
-                        href={normalizeApiUrl(photo.convertedJpgUrl)}
-                        download={`${photo.title || "photo"}.jpg`}
-                      >
-                        <Camera className="mr-2 h-4 w-4" />
-                        Converted JPG
-                      </a>
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" asChild>
-                    <a
-                      href={normalizeApiUrl(`/api/photos/${photo.id}/analysis`)}
-                      download={`${photo.title || photo.id}-analysis.json`}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      Analysis Report
-                    </a>
-                  </Button>
-                  {photo.processingStatus === "completed" && (
-                    <Button size="sm" variant="outline" asChild>
-                      <a
-                        href={normalizeApiUrl(
-                          `/api/photos/${photo.id}/content`,
-                        )}
-                        download={`${photo.title || photo.id}-content.md`}
-                      >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Content
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <PhotoAssetsCard photo={photo} />
 
             {/* Camera Information */}
-            {(photo.cameraMake ||
-              photo.cameraModel ||
-              photo.lensModel ||
-              photo.iso ||
-              photo.fNumber ||
-              photo.exposureTime) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Camera & Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {(photo.cameraMake || photo.cameraModel) && (
-                    <div>
-                      <Label className="text-sm font-medium">Camera</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {`${photo.cameraMake || ""} ${photo.cameraModel || ""}`.trim()}
-                      </p>
-                    </div>
-                  )}
-
-                  {photo.lensModel && (
-                    <div>
-                      <Label className="text-sm font-medium">Lens</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {photo.lensModel}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {photo.iso && (
-                      <div>
-                        <Label className="text-sm font-medium">ISO</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {photo.iso}
-                        </p>
-                      </div>
-                    )}
-
-                    {photo.fNumber && (
-                      <div>
-                        <Label className="text-sm font-medium">Aperture</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {formatAperture(photo.fNumber)}
-                        </p>
-                      </div>
-                    )}
-
-                    {photo.exposureTime && (
-                      <div>
-                        <Label className="text-sm font-medium">Shutter</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {formatExposureTime(photo.exposureTime)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <CameraInfoCard photo={photo} />
 
             {/* Location Information */}
-            {(photo.latitude || photo.locationCity) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Location</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {photo.locationCity && (
-                    <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <Label className="text-sm font-medium">Location</Label>
-                        <p className="text-sm text-muted-foreground">
-                          {photo.locationCity}
-                          {photo.locationCountryName &&
-                            `, ${photo.locationCountryName}`}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {photo.latitude && photo.longitude && (
-                    <div>
-                      <Label className="text-sm font-medium">Coordinates</Label>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCoordinate(photo.latitude)},{" "}
-                        {formatCoordinate(photo.longitude)}
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        asChild
-                      >
-                        <a
-                          href={`https://maps.google.com/?q=${formatCoordinate(photo.latitude)},${formatCoordinate(photo.longitude)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <MapPin className="h-4 w-4 mr-2" />
-                          View on Map
-                        </a>
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            <LocationCard photo={photo} />
           </div>
         </div>
 
         {/* Fullscreen Modal */}
         {showFullscreen && (
-          <div
-            role="presentation"
-            className="fixed inset-0 bg-black/90 flex items-center justify-center z-50"
-            onClick={() => setShowFullscreen(false)}
-          >
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute top-4 right-4 z-10 text-white hover:bg-white/20 hover:text-white"
-              onClick={() => setShowFullscreen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <img
-              role="presentation"
-              src={normalizeApiUrl(photo.imageUrl)}
-              alt={photo.title || "Full size view"}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+          <PhotoFullscreenView
+            src={normalizeApiUrl(photo.imageUrl)}
+            alt={photo.title || "Full size view"}
+            onClose={() => setShowFullscreen(false)}
+          />
         )}
 
         {/* Delete Confirmation Dialog */}
