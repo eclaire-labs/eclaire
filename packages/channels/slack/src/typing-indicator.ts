@@ -1,25 +1,9 @@
+import type { ChannelLogger } from "@eclaire/channels-core";
+import { createCircuitBreaker } from "@eclaire/channels-core";
 import type { WebClient } from "@slack/web-api";
 
-import type { SlackLogger } from "./deps.js";
-
-const MAX_CONSECUTIVE_FAILURES = 10;
-
-interface CircuitState {
-  consecutiveFailures: number;
-  suspended: boolean;
-}
-
 // Track circuit breaker state per channel ID
-const circuitStates = new Map<string, CircuitState>();
-
-function getState(channelId: string): CircuitState {
-  let state = circuitStates.get(channelId);
-  if (!state) {
-    state = { consecutiveFailures: 0, suspended: false };
-    circuitStates.set(channelId, state);
-  }
-  return state;
-}
+const breaker = createCircuitBreaker();
 
 /**
  * Adds a thinking reaction to a message as a typing indicator.
@@ -30,35 +14,23 @@ export async function addThinkingReaction(
   client: WebClient,
   channelId: string,
   messageTs: string,
-  logger: SlackLogger,
+  logger: ChannelLogger,
 ): Promise<void> {
-  const state = getState(channelId);
-
-  if (state.suspended) {
-    return;
-  }
-
-  try {
-    await client.reactions.add({
-      channel: channelId,
-      timestamp: messageTs,
-      name: "thinking_face",
-    });
-    state.consecutiveFailures = 0;
-  } catch (_err) {
-    state.consecutiveFailures++;
-    if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      state.suspended = true;
+  await breaker.run(
+    channelId,
+    () =>
+      client.reactions.add({
+        channel: channelId,
+        timestamp: messageTs,
+        name: "thinking_face",
+      }),
+    (consecutiveFailures) => {
       logger.error(
-        {
-          channelId,
-          consecutiveFailures: state.consecutiveFailures,
-        },
+        { channelId, consecutiveFailures },
         "Thinking reaction suspended after repeated failures — bot may lack permissions",
       );
-    }
-    // Swallow the error — typing indicator is non-critical
-  }
+    },
+  );
 }
 
 /**
@@ -68,7 +40,7 @@ export async function removeThinkingReaction(
   client: WebClient,
   channelId: string,
   messageTs: string,
-  logger: SlackLogger,
+  logger: ChannelLogger,
 ): Promise<void> {
   try {
     await client.reactions.remove({
@@ -89,6 +61,4 @@ export async function removeThinkingReaction(
  * Resets the circuit breaker for a given channel ID.
  * Call this when a channel is stopped/restarted.
  */
-export function resetCircuitBreaker(channelId: string): void {
-  circuitStates.delete(channelId);
-}
+export const resetCircuitBreaker = breaker.reset;

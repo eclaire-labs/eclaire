@@ -1,3 +1,4 @@
+import { sendInChunks } from "@eclaire/channels-core";
 import {
   type ChatInputCommandInteraction,
   Client,
@@ -562,9 +563,8 @@ export async function sendMessage(
       }
     }
 
-    const chunks = splitMessage(message);
-    for (let i = 0; i < chunks.length; i++) {
-      await withRetry(() => targetChannel.send(chunks[i] ?? ""), {
+    await sendInChunks(splitMessage(message), (chunk) =>
+      withRetry(() => targetChannel.send(chunk), {
         onRetry: (error, attempt) => {
           logger.warn(
             {
@@ -575,12 +575,8 @@ export async function sendMessage(
             "Retrying Discord sendMessage",
           );
         },
-      });
-
-      if (i < chunks.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
+      }),
+    );
 
     logger.info(
       { channelId, messageLength: message.length },

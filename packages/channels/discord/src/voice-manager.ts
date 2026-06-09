@@ -12,9 +12,8 @@ import {
   type VoiceConnection,
   VoiceConnectionStatus,
 } from "@discordjs/voice";
+import type { ChannelLogger } from "@eclaire/channels-core";
 import type { Client, VoiceBasedChannel } from "discord.js";
-
-import type { DiscordLogger } from "./deps.js";
 
 interface VoiceSession {
   connection: VoiceConnection;
@@ -32,7 +31,7 @@ export async function joinChannel(
   client: Client,
   guildId: string,
   voiceChannelId: string,
-  logger: DiscordLogger,
+  logger: ChannelLogger,
 ): Promise<VoiceSession | null> {
   const existingSession = activeSessions.get(guildId);
   if (existingSession) {
@@ -134,7 +133,7 @@ export async function joinChannel(
 /**
  * Leaves a voice channel in the specified guild.
  */
-export function leaveChannel(guildId: string, logger: DiscordLogger): void {
+export function leaveChannel(guildId: string, logger: ChannelLogger): void {
   const session = activeSessions.get(guildId);
   if (!session) {
     logger.debug({ guildId }, "No active voice session to leave");
@@ -165,7 +164,7 @@ export function leaveChannel(guildId: string, logger: DiscordLogger): void {
 export async function playAudio(
   guildId: string,
   audioBuffer: Buffer,
-  logger: DiscordLogger,
+  logger: ChannelLogger,
   inputType: "arbitrary" | "ogg/opus" | "webm/opus" = "arbitrary",
 ): Promise<boolean> {
   const session = activeSessions.get(guildId);
@@ -210,7 +209,7 @@ export async function playAudio(
 export function listenToUser(
   guildId: string,
   discordUserId: string,
-  logger: DiscordLogger,
+  logger: ChannelLogger,
 ): AudioReceiveStream | null {
   const session = activeSessions.get(guildId);
   if (!session) {
@@ -242,7 +241,7 @@ export function listenToUser(
 /**
  * Leaves all voice channels (for graceful shutdown).
  */
-export function leaveAllChannels(logger: DiscordLogger): void {
+export function leaveAllChannels(logger: ChannelLogger): void {
   for (const [guildId] of activeSessions) {
     leaveChannel(guildId, logger);
   }

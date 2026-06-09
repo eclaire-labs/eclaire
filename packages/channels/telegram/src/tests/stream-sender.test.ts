@@ -1,6 +1,6 @@
+import type { StreamEvent } from "@eclaire/channels-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { StreamEvent } from "../deps.js";
 import { sendStreamingResponse } from "../stream-sender.js";
 
 const mockLogger = {

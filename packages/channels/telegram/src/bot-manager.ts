@@ -1,3 +1,4 @@
+import { sendInChunks } from "@eclaire/channels-core";
 import { type Context, session, Telegraf } from "telegraf";
 
 import {
@@ -393,14 +394,12 @@ export async function sendMessage(
 
     const parseMode = options?.parseMode as string | undefined;
 
-    const chunks = splitMessage(message);
     const sendOpts = parseMode
       ? { parse_mode: parseMode as "HTML" | "Markdown" | "MarkdownV2" }
       : {};
 
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i] ?? "";
-      await withRetry(
+    await sendInChunks(splitMessage(message), (chunk) =>
+      withRetry(
         () =>
           instance.bot.telegram.sendMessage(
             instance.config.chat_identifier,
@@ -419,13 +418,8 @@ export async function sendMessage(
             );
           },
         },
-      );
-
-      // Small delay between messages to avoid rate limits
-      if (i < chunks.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
+      ),
+    );
 
     logger.info(
       {

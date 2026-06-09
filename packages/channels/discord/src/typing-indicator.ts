@@ -1,25 +1,9 @@
+import type { ChannelLogger } from "@eclaire/channels-core";
+import { createCircuitBreaker } from "@eclaire/channels-core";
 import type { TextChannel } from "discord.js";
 
-import type { DiscordLogger } from "./deps.js";
-
-const MAX_CONSECUTIVE_FAILURES = 10;
-
-interface CircuitState {
-  consecutiveFailures: number;
-  suspended: boolean;
-}
-
 // Track circuit breaker state per channel ID
-const circuitStates = new Map<string, CircuitState>();
-
-function getState(channelId: string): CircuitState {
-  let state = circuitStates.get(channelId);
-  if (!state) {
-    state = { consecutiveFailures: 0, suspended: false };
-    circuitStates.set(channelId, state);
-  }
-  return state;
-}
+const breaker = createCircuitBreaker();
 
 /**
  * Sends a typing indicator with circuit breaker protection.
@@ -27,37 +11,22 @@ function getState(channelId: string): CircuitState {
  */
 export async function safeSendTyping(
   channel: TextChannel,
-  logger: DiscordLogger,
+  logger: ChannelLogger,
 ): Promise<void> {
-  const state = getState(channel.id);
-
-  if (state.suspended) {
-    return;
-  }
-
-  try {
-    await channel.sendTyping();
-    state.consecutiveFailures = 0;
-  } catch (_err) {
-    state.consecutiveFailures++;
-    if (state.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-      state.suspended = true;
+  await breaker.run(
+    channel.id,
+    () => channel.sendTyping(),
+    (consecutiveFailures) => {
       logger.error(
-        {
-          channelId: channel.id,
-          consecutiveFailures: state.consecutiveFailures,
-        },
+        { channelId: channel.id, consecutiveFailures },
         "sendTyping suspended after repeated failures — bot may lack permissions",
       );
-    }
-    // Swallow the error — typing indicator is non-critical
-  }
+    },
+  );
 }
 
 /**
  * Resets the circuit breaker for a given channel ID.
  * Call this when a channel is stopped/restarted.
  */
-export function resetCircuitBreaker(channelId: string): void {
-  circuitStates.delete(channelId);
-}
+export const resetCircuitBreaker = breaker.reset;

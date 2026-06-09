@@ -20,7 +20,8 @@ vi.mock("../commands.js", () => ({
 // Shared flag to control rate limiter behavior from tests
 let rateLimitAllowed = true;
 
-vi.mock("@eclaire/channels-core", () => ({
+vi.mock("@eclaire/channels-core", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   ChannelRateLimiter: class {
     allow() {
       return rateLimitAllowed;

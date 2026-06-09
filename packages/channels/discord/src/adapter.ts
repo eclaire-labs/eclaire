@@ -1,4 +1,5 @@
 import type {
+  ChannelDeps,
   ChannelAdapter,
   ChannelRecord,
   SendResult,
@@ -12,7 +13,7 @@ import {
   stopBot,
 } from "./bot-manager.js";
 import { decryptConfig, validateAndEncryptConfig } from "./config.js";
-import { type DiscordDeps, setDeps } from "./deps.js";
+import { setDeps } from "./deps.js";
 
 const discordAdapter: ChannelAdapter = {
   platform: "discord",
@@ -56,7 +57,7 @@ const discordAdapter: ChannelAdapter = {
  * Initialize the Discord adapter with backend dependencies.
  * Must be called before the adapter is used.
  */
-export function initDiscordAdapter(deps: DiscordDeps): ChannelAdapter {
+export function initDiscordAdapter(deps: ChannelDeps): ChannelAdapter {
   setDeps(deps);
   return discordAdapter;
 }

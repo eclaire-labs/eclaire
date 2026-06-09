@@ -1,46 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { convertMarkdownToMrkdwn, splitMessage } from "../message-utils.js";
-
-describe("splitMessage", () => {
-  it("returns empty array for empty string", () => {
-    expect(splitMessage("")).toEqual([]);
-  });
-
-  it("returns single chunk for short message", () => {
-    const msg = "Hello, world!";
-    expect(splitMessage(msg)).toEqual([msg]);
-  });
-
-  it("splits long messages at paragraph boundaries", () => {
-    const paragraph1 = "A".repeat(3800);
-    const paragraph2 = "B".repeat(200);
-    const msg = `${paragraph1}\n\n${paragraph2}`;
-
-    const chunks = splitMessage(msg);
-    expect(chunks.length).toBe(2);
-    expect(chunks[0]).toBe(paragraph1);
-    expect(chunks[1]).toBe(paragraph2);
-  });
-
-  it("splits at line boundary when no paragraph break", () => {
-    const line1 = "A".repeat(3800);
-    const line2 = "B".repeat(200);
-    const msg = `${line1}\n${line2}`;
-
-    const chunks = splitMessage(msg);
-    expect(chunks.length).toBe(2);
-  });
-
-  it("respects custom max length", () => {
-    const msg = "ABCDE FGHIJ KLMNO";
-    const chunks = splitMessage(msg, 10);
-    expect(chunks.length).toBeGreaterThan(1);
-    for (const chunk of chunks) {
-      expect(chunk.length).toBeLessThanOrEqual(10);
-    }
-  });
-});
+import { convertMarkdownToMrkdwn } from "../message-utils.js";
 
 describe("convertMarkdownToMrkdwn", () => {
   it("converts bold syntax", () => {

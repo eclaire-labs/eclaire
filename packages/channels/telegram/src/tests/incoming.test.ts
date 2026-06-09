@@ -8,9 +8,11 @@ vi.mock("../stream-sender.js", () => ({ sendStreamingResponse: vi.fn() }));
 vi.mock("../message-utils.js", () => ({
   splitMessage: vi.fn((text: string) => [text]),
 }));
-vi.mock("@eclaire/channels-core", () => {
+vi.mock("@eclaire/channels-core", async (importOriginal) => {
+  const actual = await importOriginal<object>();
   const allow = vi.fn(() => true);
   return {
+    ...actual,
     ChannelRateLimiter: class {
       allow = allow;
     },

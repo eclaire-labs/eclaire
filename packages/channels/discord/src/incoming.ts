@@ -1,6 +1,9 @@
 import {
   ChannelRateLimiter,
   DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+  ensureSession,
+  resolvePromptRouting,
+  sendInChunks,
 } from "@eclaire/channels-core";
 import { type Message, MessageFlags, type TextChannel } from "discord.js";
 
@@ -58,13 +61,8 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const {
-    findChannel,
-    logger,
-    processPromptRequest,
-    recordHistory,
-    routeChannelPrompt,
-  } = getDeps();
+  const { findChannel, logger, processPromptRequest, recordHistory } =
+    getDeps();
   const text = message.content;
   const attachments = extractAttachments(message);
 
@@ -120,16 +118,13 @@ export async function handleIncomingMessage(
       return;
     }
 
-    const routing = routeChannelPrompt
-      ? await routeChannelPrompt(
-          userId,
-          text || "",
-          channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
-        )
-      : {
-          agentActorId: channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
-          prompt: text || "",
-        };
+    const deps = getDeps();
+    const routing = await resolvePromptRouting(
+      deps,
+      userId,
+      text || "",
+      channel,
+    );
 
     if (routing.error) {
       await message.reply(routing.error);
@@ -139,48 +134,21 @@ export async function handleIncomingMessage(
     const sessionState = getSession(channelId);
     const channelAgentActorId = routing.agentActorId;
     const routedText = routing.prompt;
-    if (
-      sessionState.agentActorId &&
-      sessionState.agentActorId !== channelAgentActorId
-    ) {
-      sessionState.sessionId = undefined;
-      sessionState.agentActorId = undefined;
-    }
 
     // Send typing indicator (with circuit breaker protection)
     const textChannel = message.channel as TextChannel;
     await safeSendTyping(textChannel, logger);
 
-    const deps = getDeps();
     const requestId = `discord-${channelId}-${Date.now()}`;
 
-    // Get or lazily create session for multi-turn context
-    if (
-      (!sessionState.sessionId ||
-        sessionState.agentActorId !== channelAgentActorId) &&
-      deps.createSession
-    ) {
-      try {
-        const session = await deps.createSession(
-          userId,
-          undefined,
-          channelAgentActorId,
-        );
-        sessionState.sessionId = session.id;
-        sessionState.agentActorId = channelAgentActorId;
-      } catch (sessionError) {
-        logger.warn(
-          {
-            channelId,
-            error:
-              sessionError instanceof Error
-                ? sessionError.message
-                : "Unknown error",
-          },
-          "Failed to create session, continuing without session tracking",
-        );
-      }
-    }
+    // Reset on agent mismatch, lazily create session for multi-turn context
+    await ensureSession(
+      deps,
+      sessionState,
+      userId,
+      channelAgentActorId,
+      channelId,
+    );
 
     const sessionId = sessionState.sessionId;
     const enableThinking = sessionState.enableThinking ?? false;
@@ -206,13 +174,9 @@ export async function handleIncomingMessage(
           });
           responseText = result.response;
           if (responseText) {
-            const chunks = splitMessage(responseText);
-            for (let i = 0; i < chunks.length; i++) {
-              await message.reply(chunks[i] ?? "");
-              if (i < chunks.length - 1) {
-                await new Promise((resolve) => setTimeout(resolve, 100));
-              }
-            }
+            await sendInChunks(splitMessage(responseText), (chunk) =>
+              message.reply(chunk),
+            );
           }
 
           // Send voice message reply if TTS audio was generated
@@ -302,13 +266,9 @@ export async function handleIncomingMessage(
 
       responseText = result.response;
       if (responseText) {
-        const chunks = splitMessage(responseText);
-        for (let i = 0; i < chunks.length; i++) {
-          await message.reply(chunks[i] ?? "");
-          if (i < chunks.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        }
+        await sendInChunks(splitMessage(responseText), (chunk) =>
+          message.reply(chunk),
+        );
       }
     }
 

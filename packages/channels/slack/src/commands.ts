@@ -1,15 +1,18 @@
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
-import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
+import type { CommandSessionState } from "@eclaire/channels-core";
+import {
+  buildHelpText,
+  clearConversation,
+  describeModel,
+  listConversationHistory,
+  startNewConversation,
+  toggleThinking,
+} from "@eclaire/channels-core";
 import type { App } from "@slack/bolt";
 
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */
-export interface SlackSessionData {
-  sessionId?: string;
-  agentActorId?: string;
-  enableThinking: boolean;
-}
+export type SlackSessionData = CommandSessionState;
 
 // In-memory session store keyed by eclaire channelId
 const sessions = new Map<string, SlackSessionData>();
@@ -38,32 +41,22 @@ const COMMANDS: SlackCommand[] = [
     name: "eclaire-help",
     description: "Show available Eclaire commands",
     handler: async (respond) => {
-      // Filter builtin commands to those available on channel surface
-      const channelCommands = BUILTIN_COMMANDS.filter(
-        (c) => !c.surfaces || c.surfaces.includes("channel"),
-      );
-      const helpText = generateHelpText(channelCommands, "eclaire-");
-      await respond(`Available commands:\n\n${helpText}`);
+      await respond(buildHelpText("eclaire-"));
     },
   },
   {
     name: "eclaire-new",
     description: "Start a new conversation",
     handler: async (respond, channelId, userId) => {
-      const { createSession, findChannel } = getDeps();
-      if (!createSession) {
-        await respond("Session management is not available.");
-        return;
-      }
       try {
-        const channel = await findChannel(channelId, userId);
-        const agentActorId =
-          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-        const session = await createSession(userId, undefined, agentActorId);
-        const state = getSession(channelId);
-        state.sessionId = session.id;
-        state.agentActorId = agentActorId;
-        await respond("New conversation started.");
+        await respond(
+          await startNewConversation(
+            getDeps(),
+            getSession(channelId),
+            channelId,
+            userId,
+          ),
+        );
       } catch {
         await respond("Failed to start a new conversation. Please try again.");
       }
@@ -73,45 +66,17 @@ const COMMANDS: SlackCommand[] = [
     name: "eclaire-model",
     description: "Show current AI model",
     handler: async (respond) => {
-      const { getModelInfo } = getDeps();
-      if (!getModelInfo) {
-        await respond("Model information is not available.");
-        return;
-      }
-      const info = getModelInfo();
-      if (!info) {
-        await respond("No model is currently configured.");
-        return;
-      }
-      await respond(
-        `Current model: ${info.name}\nProvider: ${info.provider}\nModel: ${info.model}`,
-      );
+      await respond(describeModel(getDeps()));
     },
   },
   {
     name: "eclaire-history",
     description: "Show recent conversations",
     handler: async (respond, channelId, userId) => {
-      const { findChannel, listSessions } = getDeps();
-      if (!listSessions) {
-        await respond("Session history is not available.");
-        return;
-      }
       try {
-        const channel = await findChannel(channelId, userId);
-        const agentActorId =
-          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-        const list = await listSessions(userId, 10, undefined, agentActorId);
-        if (list.length === 0) {
-          await respond("No conversations found.");
-          return;
-        }
-        const lines = list.map((s, i) => {
-          const t = s.title || "New session";
-          const title = t.length > 40 ? `${t.slice(0, 37)}...` : t;
-          return `${i + 1}. ${title} (${s.messageCount} msgs)`;
-        });
-        await respond(`Recent conversations:\n\n${lines.join("\n")}`);
+        await respond(
+          await listConversationHistory(getDeps(), channelId, userId),
+        );
       } catch {
         await respond("Failed to retrieve conversation history.");
       }
@@ -121,34 +86,22 @@ const COMMANDS: SlackCommand[] = [
     name: "eclaire-settings",
     description: "Toggle thinking mode",
     handler: async (respond, channelId) => {
-      const state = getSession(channelId);
-      state.enableThinking = !state.enableThinking;
-      const label = state.enableThinking ? "ON" : "OFF";
-      await respond(`Thinking mode: ${label}`);
+      await respond(toggleThinking(getSession(channelId)));
     },
   },
   {
     name: "eclaire-clear",
     description: "Clear conversation and start fresh",
     handler: async (respond, channelId, userId) => {
-      const { createSession, deleteSession, findChannel } = getDeps();
-      const state = getSession(channelId);
       try {
-        if (state.sessionId && deleteSession) {
-          await deleteSession(state.sessionId, userId);
-        }
-        state.sessionId = undefined;
-        state.agentActorId = undefined;
-
-        if (createSession) {
-          const channel = await findChannel(channelId, userId);
-          const agentActorId =
-            channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-          const session = await createSession(userId, undefined, agentActorId);
-          state.sessionId = session.id;
-          state.agentActorId = agentActorId;
-        }
-        await respond("Conversation cleared.");
+        await respond(
+          await clearConversation(
+            getDeps(),
+            getSession(channelId),
+            channelId,
+            userId,
+          ),
+        );
       } catch {
         await respond("Failed to clear conversation. Please try again.");
       }

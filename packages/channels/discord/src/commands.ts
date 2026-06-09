@@ -1,5 +1,12 @@
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
-import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
+import type { CommandSessionState } from "@eclaire/channels-core";
+import {
+  buildHelpText,
+  clearConversation,
+  describeModel,
+  listConversationHistory,
+  startNewConversation,
+  toggleThinking,
+} from "@eclaire/channels-core";
 import {
   type ChatInputCommandInteraction,
   type Client,
@@ -9,11 +16,7 @@ import {
 import { getDeps } from "./deps.js";
 
 /** Per-channel session state (in-memory, resets on bot restart). */
-export interface DiscordSessionData {
-  sessionId?: string;
-  agentActorId?: string;
-  enableThinking: boolean;
-}
+export type DiscordSessionData = CommandSessionState;
 
 // In-memory session store keyed by eclaire channelId
 const sessions = new Map<string, DiscordSessionData>();
@@ -47,11 +50,7 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-help")
       .setDescription("Show available Eclaire commands"),
     handler: async (interaction) => {
-      const channelCommands = BUILTIN_COMMANDS.filter(
-        (c) => !c.surfaces || c.surfaces.includes("channel"),
-      );
-      const helpText = generateHelpText(channelCommands, "eclaire-");
-      await interaction.editReply(`Available commands:\n\n${helpText}`);
+      await interaction.editReply(buildHelpText("eclaire-"));
     },
   },
   {
@@ -59,20 +58,15 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-new")
       .setDescription("Start a new conversation"),
     handler: async (interaction, channelId, userId) => {
-      const { createSession, findChannel } = getDeps();
-      if (!createSession) {
-        await interaction.editReply("Session management is not available.");
-        return;
-      }
       try {
-        const channel = await findChannel(channelId, userId);
-        const agentActorId =
-          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-        const session = await createSession(userId, undefined, agentActorId);
-        const state = getSession(channelId);
-        state.sessionId = session.id;
-        state.agentActorId = agentActorId;
-        await interaction.editReply("New conversation started.");
+        await interaction.editReply(
+          await startNewConversation(
+            getDeps(),
+            getSession(channelId),
+            channelId,
+            userId,
+          ),
+        );
       } catch {
         await interaction.editReply(
           "Failed to start a new conversation. Please try again.",
@@ -85,19 +79,7 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-model")
       .setDescription("Show current AI model"),
     handler: async (interaction) => {
-      const { getModelInfo } = getDeps();
-      if (!getModelInfo) {
-        await interaction.editReply("Model information is not available.");
-        return;
-      }
-      const info = getModelInfo();
-      if (!info) {
-        await interaction.editReply("No model is currently configured.");
-        return;
-      }
-      await interaction.editReply(
-        `Current model: ${info.name}\nProvider: ${info.provider}\nModel: ${info.model}`,
-      );
+      await interaction.editReply(describeModel(getDeps()));
     },
   },
   {
@@ -105,27 +87,9 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-history")
       .setDescription("Show recent conversations"),
     handler: async (interaction, channelId, userId) => {
-      const { findChannel, listSessions } = getDeps();
-      if (!listSessions) {
-        await interaction.editReply("Session history is not available.");
-        return;
-      }
       try {
-        const channel = await findChannel(channelId, userId);
-        const agentActorId =
-          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-        const list = await listSessions(userId, 10, undefined, agentActorId);
-        if (list.length === 0) {
-          await interaction.editReply("No conversations found.");
-          return;
-        }
-        const lines = list.map((s, i) => {
-          const t = s.title || "New session";
-          const title = t.length > 40 ? `${t.slice(0, 37)}...` : t;
-          return `${i + 1}. ${title} (${s.messageCount} msgs)`;
-        });
         await interaction.editReply(
-          `Recent conversations:\n\n${lines.join("\n")}`,
+          await listConversationHistory(getDeps(), channelId, userId),
         );
       } catch {
         await interaction.editReply("Failed to retrieve conversation history.");
@@ -137,10 +101,7 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-settings")
       .setDescription("Toggle thinking mode"),
     handler: async (interaction, channelId) => {
-      const state = getSession(channelId);
-      state.enableThinking = !state.enableThinking;
-      const label = state.enableThinking ? "ON" : "OFF";
-      await interaction.editReply(`Thinking mode: ${label}`);
+      await interaction.editReply(toggleThinking(getSession(channelId)));
     },
   },
   {
@@ -148,24 +109,15 @@ const COMMANDS: CommandDef[] = [
       .setName("eclaire-clear")
       .setDescription("Clear conversation and start fresh"),
     handler: async (interaction, channelId, userId) => {
-      const { createSession, deleteSession, findChannel } = getDeps();
-      const state = getSession(channelId);
       try {
-        if (state.sessionId && deleteSession) {
-          await deleteSession(state.sessionId, userId);
-        }
-        state.sessionId = undefined;
-        state.agentActorId = undefined;
-
-        if (createSession) {
-          const channel = await findChannel(channelId, userId);
-          const agentActorId =
-            channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-          const session = await createSession(userId, undefined, agentActorId);
-          state.sessionId = session.id;
-          state.agentActorId = agentActorId;
-        }
-        await interaction.editReply("Conversation cleared.");
+        await interaction.editReply(
+          await clearConversation(
+            getDeps(),
+            getSession(channelId),
+            channelId,
+            userId,
+          ),
+        );
       } catch {
         await interaction.editReply(
           "Failed to clear conversation. Please try again.",

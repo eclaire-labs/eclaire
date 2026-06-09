@@ -1,15 +1,18 @@
-import { DEFAULT_CHANNEL_AGENT_ACTOR_ID } from "@eclaire/channels-core";
-import { BUILTIN_COMMANDS, generateHelpText } from "@eclaire/core";
+import type { CommandSessionState } from "@eclaire/channels-core";
+import {
+  buildHelpText,
+  clearConversation,
+  describeModel,
+  listConversationHistory,
+  startNewConversation,
+  toggleThinking,
+} from "@eclaire/channels-core";
 import type { Context, Telegraf } from "telegraf";
 
 import { getDeps } from "./deps.js";
 
 /** Per-chat session state stored by Telegraf's session middleware. */
-export interface TelegramSessionData {
-  sessionId?: string;
-  agentActorId?: string;
-  enableThinking: boolean;
-}
+export type TelegramSessionData = CommandSessionState;
 
 /** Telegraf context extended with our session data. */
 export interface BotContext extends Context {
@@ -31,21 +34,16 @@ const COMMANDS: TelegramCommand[] = [
     name: "start",
     description: "Start the assistant",
     handler: async (ctx, channelId, userId) => {
-      const { createSession, findChannel, logger } = getDeps();
+      const deps = getDeps();
       try {
-        if (createSession && !ctx.session.sessionId) {
-          const channel = await findChannel(channelId, userId);
-          const agentActorId =
-            channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-          const session = await createSession(userId, undefined, agentActorId);
-          ctx.session.sessionId = session.id;
-          ctx.session.agentActorId = agentActorId;
+        if (deps.createSession && !ctx.session.sessionId) {
+          await startNewConversation(deps, ctx.session, channelId, userId);
         }
         await ctx.reply(
           "Hello! I'm your Eclaire assistant. How can I help you today?",
         );
       } catch (error) {
-        logger.error(
+        deps.logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
           "Failed to handle /start command",
         );
@@ -58,11 +56,7 @@ const COMMANDS: TelegramCommand[] = [
     handler: async (ctx) => {
       const { logger } = getDeps();
       try {
-        const channelCommands = BUILTIN_COMMANDS.filter(
-          (c) => !c.surfaces || c.surfaces.includes("channel"),
-        );
-        const helpText = generateHelpText(channelCommands);
-        await ctx.reply(`Available commands:\n\n${helpText}`);
+        await ctx.reply(buildHelpText());
       } catch (error) {
         logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
@@ -75,21 +69,13 @@ const COMMANDS: TelegramCommand[] = [
     name: "new",
     description: "Start a new conversation",
     handler: async (ctx, channelId, userId) => {
-      const { createSession, findChannel, logger } = getDeps();
-      if (!createSession) {
-        await ctx.reply("Session management is not available.");
-        return;
-      }
+      const deps = getDeps();
       try {
-        const channel = await findChannel(channelId, userId);
-        const agentActorId =
-          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-        const session = await createSession(userId, undefined, agentActorId);
-        ctx.session.sessionId = session.id;
-        ctx.session.agentActorId = agentActorId;
-        await ctx.reply("New conversation started.");
+        await ctx.reply(
+          await startNewConversation(deps, ctx.session, channelId, userId),
+        );
       } catch (error) {
-        logger.error(
+        deps.logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
           "Failed to handle /new command",
         );
@@ -103,22 +89,11 @@ const COMMANDS: TelegramCommand[] = [
     name: "model",
     description: "Show current AI model",
     handler: async (ctx) => {
-      const { getModelInfo, logger } = getDeps();
-      if (!getModelInfo) {
-        await ctx.reply("Model information is not available.");
-        return;
-      }
+      const deps = getDeps();
       try {
-        const info = getModelInfo();
-        if (!info) {
-          await ctx.reply("No model is currently configured.");
-          return;
-        }
-        await ctx.reply(
-          `Current model: ${info.name}\nProvider: ${info.provider}\nModel: ${info.model}`,
-        );
+        await ctx.reply(describeModel(deps));
       } catch (error) {
-        logger.error(
+        deps.logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
           "Failed to handle /model command",
         );
@@ -130,34 +105,11 @@ const COMMANDS: TelegramCommand[] = [
     name: "history",
     description: "Show recent conversations",
     handler: async (ctx, channelId, userId) => {
-      const { findChannel, listSessions, logger } = getDeps();
-      if (!listSessions) {
-        await ctx.reply("Session history is not available.");
-        return;
-      }
+      const deps = getDeps();
       try {
-        const channel = await findChannel(channelId, userId);
-        const agentActorId =
-          channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-        const sessions = await listSessions(
-          userId,
-          10,
-          undefined,
-          agentActorId,
-        );
-        if (sessions.length === 0) {
-          await ctx.reply("No conversations found.");
-          return;
-        }
-
-        const lines = sessions.map((s, i) => {
-          const t = s.title || "New session";
-          const title = t.length > 40 ? `${t.slice(0, 37)}...` : t;
-          return `${i + 1}. ${title} (${s.messageCount} msgs)`;
-        });
-        await ctx.reply(`Recent conversations:\n\n${lines.join("\n")}`);
+        await ctx.reply(await listConversationHistory(deps, channelId, userId));
       } catch (error) {
-        logger.error(
+        deps.logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
           "Failed to handle /history command",
         );
@@ -171,9 +123,7 @@ const COMMANDS: TelegramCommand[] = [
     handler: async (ctx) => {
       const { logger } = getDeps();
       try {
-        ctx.session.enableThinking = !ctx.session.enableThinking;
-        const state = ctx.session.enableThinking ? "ON" : "OFF";
-        await ctx.reply(`Thinking mode: ${state}`);
+        await ctx.reply(toggleThinking(ctx.session));
       } catch (error) {
         logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
@@ -186,28 +136,13 @@ const COMMANDS: TelegramCommand[] = [
     name: "clear",
     description: "Clear conversation and start fresh",
     handler: async (ctx, channelId, userId) => {
-      const { createSession, deleteSession, findChannel, logger } = getDeps();
+      const deps = getDeps();
       try {
-        // Delete current session if one exists
-        if (ctx.session.sessionId && deleteSession) {
-          await deleteSession(ctx.session.sessionId, userId);
-        }
-        ctx.session.sessionId = undefined;
-        ctx.session.agentActorId = undefined;
-
-        // Create a fresh session if possible
-        if (createSession) {
-          const channel = await findChannel(channelId, userId);
-          const agentActorId =
-            channel?.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID;
-          const session = await createSession(userId, undefined, agentActorId);
-          ctx.session.sessionId = session.id;
-          ctx.session.agentActorId = agentActorId;
-        }
-
-        await ctx.reply("Conversation cleared.");
+        await ctx.reply(
+          await clearConversation(deps, ctx.session, channelId, userId),
+        );
       } catch (error) {
-        logger.error(
+        deps.logger.error(
           { error: error instanceof Error ? error.message : "Unknown error" },
           "Failed to handle /clear command",
         );

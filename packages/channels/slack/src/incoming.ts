@@ -1,6 +1,9 @@
 import {
   ChannelRateLimiter,
   DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+  ensureSession,
+  resolvePromptRouting,
+  sendInChunks,
 } from "@eclaire/channels-core";
 import type { WebClient } from "@slack/web-api";
 
@@ -28,13 +31,8 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const {
-    findChannel,
-    logger,
-    processPromptRequest,
-    recordHistory,
-    routeChannelPrompt,
-  } = getDeps();
+  const { findChannel, logger, processPromptRequest, recordHistory } =
+    getDeps();
 
   // Drop messages with no text
   if (!text) return;
@@ -88,16 +86,8 @@ export async function handleIncomingMessage(
       return;
     }
 
-    const routing = routeChannelPrompt
-      ? await routeChannelPrompt(
-          userId,
-          text,
-          channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
-        )
-      : {
-          agentActorId: channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
-          prompt: text,
-        };
+    const deps = getDeps();
+    const routing = await resolvePromptRouting(deps, userId, text, channel);
 
     if (routing.error) {
       await client.chat.postMessage({
@@ -111,47 +101,20 @@ export async function handleIncomingMessage(
     const sessionState = getSession(channelId);
     const channelAgentActorId = routing.agentActorId;
     const routedPrompt = routing.prompt;
-    if (
-      sessionState.agentActorId &&
-      sessionState.agentActorId !== channelAgentActorId
-    ) {
-      sessionState.sessionId = undefined;
-      sessionState.agentActorId = undefined;
-    }
 
     // Add thinking reaction as typing indicator
     await addThinkingReaction(client, slackChannelId, messageTs, logger);
 
-    const deps = getDeps();
     const requestId = `slack-${channelId}-${Date.now()}`;
 
-    // Get or lazily create session for multi-turn context
-    if (
-      (!sessionState.sessionId ||
-        sessionState.agentActorId !== channelAgentActorId) &&
-      deps.createSession
-    ) {
-      try {
-        const session = await deps.createSession(
-          userId,
-          undefined,
-          channelAgentActorId,
-        );
-        sessionState.sessionId = session.id;
-        sessionState.agentActorId = channelAgentActorId;
-      } catch (sessionError) {
-        logger.warn(
-          {
-            channelId,
-            error:
-              sessionError instanceof Error
-                ? sessionError.message
-                : "Unknown error",
-          },
-          "Failed to create session, continuing without session tracking",
-        );
-      }
-    }
+    // Reset on agent mismatch, lazily create session for multi-turn context
+    await ensureSession(
+      deps,
+      sessionState,
+      userId,
+      channelAgentActorId,
+      channelId,
+    );
 
     const sessionId = sessionState.sessionId;
     const enableThinking = sessionState.enableThinking ?? false;
@@ -188,17 +151,12 @@ export async function handleIncomingMessage(
       responseText = result.response;
       if (responseText) {
         const mrkdwn = convertMarkdownToMrkdwn(responseText);
-        const chunks = splitMessage(mrkdwn);
-        for (let i = 0; i < chunks.length; i++) {
-          const chunkText = chunks[i] ?? "";
-          await client.chat.postMessage({
+        await sendInChunks(splitMessage(mrkdwn), (chunk) =>
+          client.chat.postMessage({
             channel: slackChannelId,
-            text: chunkText,
-          });
-          if (i < chunks.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        }
+            text: chunk,
+          }),
+        );
       }
     }
 
@@ -360,18 +318,13 @@ export async function handleIncomingAudioFile(
     // Send text response
     if (result.response) {
       const mrkdwn = convertMarkdownToMrkdwn(result.response);
-      const chunks = splitMessage(mrkdwn);
-      for (let i = 0; i < chunks.length; i++) {
-        const chunkText = chunks[i] ?? "";
-        await client.chat.postMessage({
+      await sendInChunks(splitMessage(mrkdwn), (chunk) =>
+        client.chat.postMessage({
           channel: slackChannelId,
           thread_ts: messageTs,
-          text: chunkText,
-        });
-        if (i < chunks.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
+          text: chunk,
+        }),
+      );
     }
 
     // Record history

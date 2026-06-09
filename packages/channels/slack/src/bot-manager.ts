@@ -1,3 +1,4 @@
+import { sendInChunks } from "@eclaire/channels-core";
 import { App } from "@slack/bolt";
 
 import { registerCommands } from "./commands.js";
@@ -99,72 +100,6 @@ function debounceKey(
   threadTs: string | null,
 ): string {
   return `${slackChannel}:${slackUser}:${threadTs ?? "main"}`;
-}
-
-/**
- * Schedules a reconnection attempt for all channels managed by a bot token.
- * Uses exponential backoff with jitter and up to 10 attempts.
- */
-function _scheduleReconnect(
-  botToken: string,
-  managedChannels: Map<string, ChannelMeta>,
-  logger: ReturnType<typeof getDeps>["logger"],
-  attempt = 1,
-): void {
-  const maxAttempts = 10;
-  if (attempt > maxAttempts) {
-    logger.error({ attempt }, "Slack reconnect failed after max attempts");
-    return;
-  }
-
-  const baseDelay = Math.min(2000 * 1.8 ** (attempt - 1), 30_000);
-  const jitter = baseDelay * 0.25 * Math.random();
-  const delay = Math.round(baseDelay + jitter);
-  logger.info({ attempt, delayMs: delay }, "Scheduling Slack reconnect");
-
-  setTimeout(async () => {
-    // Clean up old app
-    const oldInstance = appPool.get(botToken);
-    if (oldInstance) {
-      try {
-        await oldInstance.app.stop();
-      } catch {
-        /* already stopped */
-      }
-      appPool.delete(botToken);
-    }
-
-    // Restart all channels that were on this token
-    const channelIds = Array.from(managedChannels.keys());
-    if (channelIds.length === 0) return;
-
-    const firstId = channelIds[0];
-    if (!firstId) return;
-    const success = await startBot(firstId);
-    if (!success) {
-      _scheduleReconnect(botToken, managedChannels, logger, attempt + 1);
-      return;
-    }
-
-    // Re-register remaining channels on the new app
-    const newInstance = appPool.get(channelTokenMap.get(firstId) ?? "");
-    if (newInstance) {
-      for (let i = 1; i < channelIds.length; i++) {
-        const chId = channelIds[i];
-        if (!chId) continue;
-        const meta = managedChannels.get(chId);
-        if (meta) {
-          newInstance.managedChannels.set(chId, meta);
-          channelTokenMap.set(chId, botToken);
-        }
-      }
-    }
-
-    logger.info(
-      { channelCount: channelIds.length },
-      "Slack reconnect successful",
-    );
-  }, delay);
 }
 
 async function dispatchDebounced(
@@ -581,14 +516,12 @@ export async function sendMessage(
     }
 
     const mrkdwn = convertMarkdownToMrkdwn(message);
-    const chunks = splitMessage(mrkdwn);
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkText = chunks[i] ?? "";
-      await withRetry(
+    await sendInChunks(splitMessage(mrkdwn), (chunk) =>
+      withRetry(
         () =>
           instance.app.client.chat.postMessage({
             channel: meta.slackChannelId,
-            text: chunkText,
+            text: chunk,
           }),
         {
           onRetry: (error, attempt) => {
@@ -602,12 +535,8 @@ export async function sendMessage(
             );
           },
         },
-      );
-
-      if (i < chunks.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-    }
+      ),
+    );
 
     logger.info(
       { channelId, messageLength: message.length },

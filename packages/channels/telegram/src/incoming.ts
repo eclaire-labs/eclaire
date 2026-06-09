@@ -1,6 +1,9 @@
 import {
   ChannelRateLimiter,
   DEFAULT_CHANNEL_AGENT_ACTOR_ID,
+  ensureSession,
+  resolvePromptRouting,
+  sendInChunks,
 } from "@eclaire/channels-core";
 import { Input } from "telegraf";
 
@@ -23,13 +26,8 @@ export async function handleIncomingMessage(
   channelId: string,
   userId: string,
 ): Promise<void> {
-  const {
-    findChannel,
-    logger,
-    processPromptRequest,
-    recordHistory,
-    routeChannelPrompt,
-  } = getDeps();
+  const { findChannel, logger, processPromptRequest, recordHistory } =
+    getDeps();
 
   if (!("text" in ctx.message!) || !ctx.message.text) {
     return;
@@ -89,16 +87,8 @@ export async function handleIncomingMessage(
       return;
     }
 
-    const routing = routeChannelPrompt
-      ? await routeChannelPrompt(
-          userId,
-          message,
-          channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
-        )
-      : {
-          agentActorId: channel.agentActorId ?? DEFAULT_CHANNEL_AGENT_ACTOR_ID,
-          prompt: message,
-        };
+    const deps = getDeps();
+    const routing = await resolvePromptRouting(deps, userId, message, channel);
 
     if (routing.error) {
       await ctx.reply(routing.error);
@@ -108,49 +98,21 @@ export async function handleIncomingMessage(
     const channelAgentActorId = routing.agentActorId;
     const routedPrompt = routing.prompt;
 
-    if (
-      ctx.session.agentActorId &&
-      ctx.session.agentActorId !== channelAgentActorId
-    ) {
-      ctx.session.sessionId = undefined;
-      ctx.session.agentActorId = undefined;
-    }
-
     // Send typing indicator (with circuit breaker protection)
     if (ctx.chat) {
       await safeSendChatAction(ctx.telegram, ctx.chat.id, "typing", logger);
     }
 
-    const deps = getDeps();
     const requestId = `telegram-${channelId}-${Date.now()}`;
 
-    // Lazily create a session on first message if possible
-    if (
-      (!ctx.session.sessionId ||
-        ctx.session.agentActorId !== channelAgentActorId) &&
-      deps.createSession
-    ) {
-      try {
-        const session = await deps.createSession(
-          userId,
-          undefined,
-          channelAgentActorId,
-        );
-        ctx.session.sessionId = session.id;
-        ctx.session.agentActorId = channelAgentActorId;
-      } catch (sessionError) {
-        logger.warn(
-          {
-            channelId,
-            error:
-              sessionError instanceof Error
-                ? sessionError.message
-                : "Unknown error",
-          },
-          "Failed to create session, continuing without session tracking",
-        );
-      }
-    }
+    // Reset on agent mismatch, lazily create a session on first message
+    await ensureSession(
+      deps,
+      ctx.session,
+      userId,
+      channelAgentActorId,
+      channelId,
+    );
 
     const sessionId = ctx.session.sessionId;
     const enableThinking = ctx.session.enableThinking ?? false;
@@ -187,13 +149,9 @@ export async function handleIncomingMessage(
 
       responseText = result.response;
       if (responseText) {
-        const chunks = splitMessage(responseText);
-        for (let i = 0; i < chunks.length; i++) {
-          await ctx.reply(chunks[i] ?? "");
-          if (i < chunks.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-          }
-        }
+        await sendInChunks(splitMessage(responseText), (chunk) =>
+          ctx.reply(chunk),
+        );
       }
     }
 
@@ -336,13 +294,9 @@ export async function handleIncomingVoiceMessage(
 
     // Send text response
     if (result.response) {
-      const chunks = splitMessage(result.response);
-      for (let i = 0; i < chunks.length; i++) {
-        await ctx.reply(chunks[i] ?? "");
-        if (i < chunks.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
-      }
+      await sendInChunks(splitMessage(result.response), (chunk) =>
+        ctx.reply(chunk),
+      );
     }
 
     // Send voice reply if TTS audio was generated

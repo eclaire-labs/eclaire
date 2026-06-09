@@ -1,4 +1,5 @@
 import type {
+  ChannelDeps,
   ChannelAdapter,
   ChannelRecord,
   SendResult,
@@ -12,7 +13,7 @@ import {
   stopBot,
 } from "./bot-manager.js";
 import { decryptConfig, validateAndEncryptConfig } from "./config.js";
-import { setDeps, type TelegramDeps } from "./deps.js";
+import { setDeps } from "./deps.js";
 
 const telegramAdapter: ChannelAdapter = {
   platform: "telegram",
@@ -56,7 +57,7 @@ const telegramAdapter: ChannelAdapter = {
  * Initialize the Telegram adapter with backend dependencies.
  * Must be called before the adapter is used.
  */
-export function initTelegramAdapter(deps: TelegramDeps): ChannelAdapter {
+export function initTelegramAdapter(deps: ChannelDeps): ChannelAdapter {
   setDeps(deps);
   return telegramAdapter;
 }
