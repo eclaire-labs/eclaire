@@ -1,9 +1,6 @@
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
-import { ActorPicker } from "@/components/shared/ActorPicker";
-import { DueDatePicker } from "@/components/shared/due-date-picker";
-import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,20 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import type { ActorOption } from "@/hooks/use-actors";
 import type { Task, TaskStatus } from "@/types/task";
 
-import { CREATE_STATUS_OPTIONS, PRIORITY_OPTIONS } from "./task-utils";
+import { CREATE_STATUS_OPTIONS } from "./task-utils";
+import { TaskFormFields } from "./TaskFormFields";
 
 const INITIAL_TASK: Omit<Task, "id"> = {
   title: "",
@@ -120,106 +108,43 @@ export function CreateTaskDialog({
           }}
         >
           <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-2">
-            {/* Title */}
-            <div className="space-y-2">
-              <Label htmlFor="new-title">
-                Title <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="new-title"
-                placeholder="Task title"
-                value={task.title}
-                onChange={(e) => setTask({ ...task, title: e.target.value })}
-                required
-              />
-            </div>
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="new-description">Description</Label>
-              <Textarea
-                id="new-description"
-                placeholder="Task description (optional)"
-                rows={3}
-                value={task.description || ""}
-                onChange={(e) =>
-                  setTask({ ...task, description: e.target.value })
-                }
-              />
-            </div>
-            {/* Status & Due Date */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-status">Status</Label>
-                <Select
-                  value={task.taskStatus}
-                  onValueChange={(value) =>
-                    setTask({ ...task, taskStatus: value as TaskStatus })
-                  }
-                >
-                  <SelectTrigger id="new-status">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CREATE_STATUS_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-priority">Priority</Label>
-                <Select
-                  value={String(task.priority)}
-                  onValueChange={(value) =>
-                    setTask({ ...task, priority: Number(value) })
-                  }
-                >
-                  <SelectTrigger id="new-priority">
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITY_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="new-due-date">Due Date</Label>
-                <DueDatePicker
-                  value={task.dueDate || null}
-                  onChange={(value) =>
-                    setTask({ ...task, dueDate: value ?? null })
-                  }
-                />
-              </div>
-            </div>
-            {/* Assignee */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-assignee">Assignee</Label>
-                <ActorPicker
-                  id="new-assignee"
-                  actors={assigneeOptions}
-                  value={task.delegateActorId ?? null}
-                  allowUnassigned
-                  placeholder="Unassigned"
-                  searchPlaceholder="Search..."
-                  onChange={(value) => {
-                    const actor = assigneeOptions.find((a) => a.id === value);
-                    setTask({
-                      ...task,
-                      delegateActorId: value,
-                      delegateMode:
-                        actor?.kind === "agent" ? "assist" : "manual",
-                    });
-                  }}
-                />
-                {assigneeOptions.find((a) => a.id === task.delegateActorId)
+            <TaskFormFields
+              idPrefix="new"
+              title={task.title}
+              titlePlaceholder="Task title"
+              onTitleChange={(value) => setTask({ ...task, title: value })}
+              description={task.description}
+              descriptionPlaceholder="Task description (optional)"
+              onDescriptionChange={(value) =>
+                setTask({ ...task, description: value })
+              }
+              taskStatus={task.taskStatus}
+              statusOptions={CREATE_STATUS_OPTIONS}
+              onStatusChange={(value) =>
+                setTask({ ...task, taskStatus: value as TaskStatus })
+              }
+              priority={task.priority}
+              onPriorityChange={(value) =>
+                setTask({ ...task, priority: value })
+              }
+              dueDate={task.dueDate}
+              onDueDateChange={(value) =>
+                setTask({ ...task, dueDate: value ?? null })
+              }
+              actors={assigneeOptions}
+              assigneeId={task.delegateActorId ?? null}
+              assigneePlaceholder="Unassigned"
+              assigneeSearchPlaceholder="Search..."
+              onAssigneeChange={(value) => {
+                const actor = assigneeOptions.find((a) => a.id === value);
+                setTask({
+                  ...task,
+                  delegateActorId: value,
+                  delegateMode: actor?.kind === "agent" ? "assist" : "manual",
+                });
+              }}
+              assigneeExtra={
+                assigneeOptions.find((a) => a.id === task.delegateActorId)
                   ?.kind === "agent" && (
                   <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer">
                     <input
@@ -235,11 +160,8 @@ export function CreateTaskDialog({
                     />
                     Require review before completing
                   </label>
-                )}
-              </div>
-            </div>
-            {/* Tags */}
-            <TagEditor
+                )
+              }
               tags={task.tags}
               onAddTag={(tag) =>
                 setTask((prev) => ({ ...prev, tags: [...prev.tags, tag] }))

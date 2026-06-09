@@ -1,26 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
-import {
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Eye,
-  Filter,
-  Loader2,
-  Play,
-  RefreshCw,
-  Search,
-  X,
-  XCircle,
-} from "lucide-react";
+import { Filter, Loader2, RefreshCw, Search, X } from "lucide-react";
 
 const routeApi = getRouteApi("/_authenticated/processing");
 
 import { useEffect, useState } from "react";
 
 import { MobileListsBackButton } from "@/components/mobile/mobile-lists-back-button";
+import { JobsTable } from "@/components/processing/JobsTable";
 import { ProcessingSummaryDashboard } from "@/components/processing/ProcessingSummaryDashboard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,10 +16,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -40,315 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useProcessingEvents } from "@/hooks/use-processing-status";
-import { apiFetch } from "@/lib/api-client";
-
-interface ProcessingJob {
-  id: string;
-  assetType: "photos" | "documents" | "bookmarks" | "notes";
-  assetId: string;
-  status: "pending" | "processing" | "completed" | "failed" | "retry_pending";
-  stages: Array<{
-    name: string;
-    status: string;
-    progress: number;
-    startedAt?: number;
-    completedAt?: number;
-    error?: string;
-  }>;
-  currentStage?: string;
-  overallProgress: number;
-  errorMessage?: string;
-  retryCount: number;
-  canRetry: boolean;
-  startedAt?: number;
-  completedAt?: number;
-  createdAt: number;
-  updatedAt: number;
-}
-
-interface AssetDetails {
-  title?: string;
-  name?: string;
-  url?: string;
-  originalFilename?: string;
-  description?: string;
-}
-
-const statusIcons = {
-  pending: <Clock className="h-4 w-4 text-warning" />,
-  processing: <Loader2 className="h-4 w-4 text-info animate-spin" />,
-  completed: <CheckCircle className="h-4 w-4 text-success" />,
-  failed: <XCircle className="h-4 w-4 text-destructive" />,
-  retry_pending: <AlertCircle className="h-4 w-4 text-warning" />,
-};
-
-const statusColors = {
-  pending: "bg-warning/10 text-warning",
-  processing: "bg-info/10 text-info",
-  completed: "bg-success/10 text-success",
-  failed: "bg-destructive/10 text-destructive",
-  retry_pending: "bg-warning/10 text-warning",
-};
-
-// User-friendly stage names
-const stageNames: Record<string, string> = {
-  // Common stages
-  result_saving: "Saving Results",
-  result_processing: "Saving Results", // Same as result_saving for consistency
-  ai_processing: "AI Analysis",
-  ai_analysis: "AI Analysis", // For photos
-  text_extraction: "Text Extraction",
-  thumbnail_generation: "Creating Thumbnail",
-  metadata_extraction: "Extracting Metadata",
-  vector_embedding: "Creating Search Index",
-  initialization: "Starting Process",
-  validation: "Validating Input",
-  cleanup: "Cleaning Up",
-  completion: "Finalizing",
-
-  // Photo-specific stages
-  image_preparation: "Preparing Image",
-  image_conversion: "Converting Image", // For HEIC conversion
-  image_analysis: "Analyzing Image",
-
-  // Document-specific stages
-  pdf_generation: "Generating PDF", // Updated from "Processing File"
-  file_processing: "Processing File",
-  document_parsing: "Parsing Document",
-  content_extraction: "Extracting Content",
-
-  // Bookmark-specific stages
-  content_analysis: "Extracting Content", // Changed from "Analyzing Content"
-  ai_tagging: "AI Analysis",
-  bookmark_processing: "Processing Bookmark",
-
-  // Note-specific stages
-  note_processing: "Processing Note",
-
-  // Python worker stages (replace Docling with generic terms)
-  document_download: "Downloading Document",
-  docling_processing: "Text Extraction", // Changed from Docling implementation detail
-  output_generation: "Generating Output",
-  text_preparation: "Preparing Text",
-  embedding_generation: "Creating Embeddings",
-  index_creation: "Building Search Index",
-  result_storage: "Storing Results",
-};
-
-function getFriendlyStage(stage?: string): string {
-  if (!stage) return "—";
-  return (
-    stageNames[stage] ||
-    stage.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
-  );
-}
-
-function getFriendlyCurrentStage(stage?: string, status?: string): string {
-  // Don't show current stage for completed or failed jobs
-  if (status === "completed" || status === "failed") {
-    return "—";
-  }
-  return getFriendlyStage(stage);
-}
-
-function JobDetailsDialog({ job }: { job: ProcessingJob }) {
-  const _navigate = useNavigate();
-  const [assetDetails, setAssetDetails] = useState<AssetDetails | null>(null);
-  const [isLoadingAsset, setIsLoadingAsset] = useState(false);
-
-  // Fetch asset details when dialog opens
-  useEffect(() => {
-    const fetchAssetDetails = async () => {
-      setIsLoadingAsset(true);
-      try {
-        const response = await apiFetch(`/api/${job.assetType}/${job.assetId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setAssetDetails(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch asset details:", error);
-      } finally {
-        setIsLoadingAsset(false);
-      }
-    };
-
-    fetchAssetDetails();
-  }, [job.assetType, job.assetId]);
-
-  const formatTimestamp = (timestamp?: number) => {
-    if (!timestamp) return "—";
-    return new Date(timestamp * 1000).toLocaleString();
-  };
-
-  const formatDuration = (start?: number, end?: number) => {
-    if (!start) return "—";
-    if (!end) return "In progress";
-    const duration = end - start;
-    if (duration < 60) return `${duration}s`;
-    if (duration < 3600)
-      return `${Math.floor(duration / 60)}m ${duration % 60}s`;
-    return `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;
-  };
-
-  const totalDuration = formatDuration(job.startedAt, job.completedAt);
-
-  const getAssetDisplayName = () => {
-    if (isLoadingAsset) return "Loading...";
-    if (!assetDetails) return "Unknown";
-
-    return (
-      assetDetails.title ||
-      assetDetails.name ||
-      assetDetails.originalFilename ||
-      assetDetails.url ||
-      "Untitled"
-    );
-  };
-
-  return (
-    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>Processing Job Details</DialogTitle>
-        <DialogDescription>
-          View detailed information about this processing job including status,
-          progress, and stage details.
-        </DialogDescription>
-        <div className="space-y-1 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{job.assetType}</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="font-mono text-sm">{job.assetId}</span>
-          </div>
-          <div className="text-sm">
-            <span className="font-medium">Asset:</span> {getAssetDisplayName()}
-          </div>
-        </div>
-      </DialogHeader>
-
-      <div className="space-y-6">
-        {/* Job Overview */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Status</div>
-            <div className="flex items-center gap-2">
-              {statusIcons[job.status]}
-              <Badge className={statusColors[job.status]}>
-                {job.status.replace("_", " ")}
-              </Badge>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">
-              Overall Progress
-            </div>
-            <div className="flex items-center gap-2">
-              <Progress value={job.overallProgress} className="flex-1" />
-              <span className="text-sm font-medium">
-                {job.overallProgress}%
-              </span>
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Started</div>
-            <p className="text-sm">{formatTimestamp(job.startedAt)}</p>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Completed</div>
-            <p className="text-sm">{formatTimestamp(job.completedAt)}</p>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">Duration</div>
-            <p className="text-sm">{totalDuration}</p>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground mb-1">
-              Retry Count
-            </div>
-            <p className="text-sm">{job.retryCount}</p>
-          </div>
-        </div>
-
-        {/* Processing Stages */}
-        {job.stages && job.stages.length > 0 && (
-          <div className="space-y-3">
-            <h4 className="text-sm font-medium">Processing Stages</h4>
-            <div className="space-y-2">
-              {job.stages.map((stage) => (
-                <div
-                  key={stage.name}
-                  className="flex items-center justify-between p-3 rounded border"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1">
-                      {stage.status === "completed" && (
-                        <CheckCircle className="h-4 w-4 text-success" />
-                      )}
-                      {stage.status === "processing" && (
-                        <Loader2 className="h-4 w-4 animate-spin text-info" />
-                      )}
-                      {stage.status === "failed" && (
-                        <XCircle className="h-4 w-4 text-destructive" />
-                      )}
-                      {stage.status === "pending" && (
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium">
-                        {getFriendlyStage(stage.name)}
-                      </span>
-                      {stage.error && (
-                        <p className="text-xs text-red-600 mt-1">
-                          {stage.error}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {stage.status === "processing" && (
-                      <>
-                        <Progress value={stage.progress} className="w-16 h-2" />
-                        <span className="text-xs text-muted-foreground w-8 text-right">
-                          {stage.progress}%
-                        </span>
-                      </>
-                    )}
-                    {stage.startedAt && (
-                      <div className="text-xs text-muted-foreground">
-                        {formatDuration(stage.startedAt, stage.completedAt)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Error Details */}
-        {job.errorMessage && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-red-600">Error Details</h4>
-            <div className="p-3 bg-red-50 border border-red-200 rounded">
-              <p className="text-sm text-red-800">{job.errorMessage}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </DialogContent>
-  );
-}
+import type { ProcessingJob } from "@/hooks/use-processing-jobs";
+import { useProcessingJobs } from "@/hooks/use-processing-jobs";
 
 export default function ProcessingContent() {
   const isMobile = useIsMobile();
@@ -361,26 +40,7 @@ export default function ProcessingContent() {
   const [autoOpenJobId, setAutoOpenJobId] = useState<string | null>(null);
   const [manualOpenJobId, setManualOpenJobId] = useState<string | null>(null);
 
-  // Get SSE connection status for real-time updates
-  const { isConnected } = useProcessingEvents();
-
-  const {
-    data: jobs,
-    isLoading,
-    refetch,
-  } = useQuery({
-    queryKey: ["processing-jobs"],
-    queryFn: async () => {
-      const response = await apiFetch("/api/processing-status/jobs?limit=9999");
-      if (!response.ok) {
-        throw new Error("Failed to fetch processing jobs");
-      }
-      return response.json();
-    },
-    staleTime: 0, // Always refetch on mount — this is a monitoring dashboard
-    // Only poll as fallback when SSE is disconnected
-    refetchInterval: isConnected ? false : 60000, // Poll every minute when SSE disconnected
-  });
+  const { jobs, isLoading, refetch, retryJob } = useProcessingJobs();
 
   // Handle auto-opening job details dialog based on URL parameters
   useEffect(() => {
@@ -399,32 +59,6 @@ export default function ProcessingContent() {
       }
     }
   }, [jobs, assetType, assetId, navigate]);
-
-  const handleRetry = async (
-    assetType: string,
-    assetId: string,
-    force: boolean = false,
-  ) => {
-    try {
-      const response = await apiFetch(
-        `/api/processing-status/${assetType}/${assetId}/retry`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ force }),
-        },
-      );
-
-      if (response.ok) {
-        refetch();
-      } else {
-        const errorData = await response.json();
-        console.error("Failed to retry job:", errorData.error);
-      }
-    } catch (error) {
-      console.error("Failed to retry job:", error);
-    }
-  };
 
   const clearAllFilters = () => {
     setStatusFilter("all");
@@ -456,9 +90,13 @@ export default function ProcessingContent() {
     navigate({ to: detailsUrl });
   };
 
-  const formatTimestamp = (timestamp?: number) => {
-    if (!timestamp) return "—";
-    return new Date(timestamp * 1000).toLocaleString();
+  const handleDetailsOpenChange = (jobId: string, open: boolean) => {
+    if (!open) {
+      if (autoOpenJobId === jobId) setAutoOpenJobId(null);
+      if (manualOpenJobId === jobId) setManualOpenJobId(null);
+    } else {
+      setManualOpenJobId(jobId);
+    }
   };
 
   const filteredJobs =
@@ -685,135 +323,14 @@ export default function ProcessingContent() {
           No processing jobs found matching your criteria.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Asset</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Current Stage</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Completed</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredJobs.map((job: ProcessingJob) => (
-                <TableRow
-                  key={job.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleRowClick(job)}
-                >
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{job.assetType}</span>
-                      <span className="text-sm text-muted-foreground font-mono">
-                        {job.assetId.substring(0, 10)}...
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {statusIcons[job.status as keyof typeof statusIcons]}
-                      <Badge
-                        className={
-                          statusColors[job.status as keyof typeof statusColors]
-                        }
-                      >
-                        {job.status.replace("_", " ")}
-                      </Badge>
-                      {(job.status === "processing" ||
-                        job.status === "pending") && (
-                        <div className="flex items-center gap-1 ml-2">
-                          <Progress
-                            value={job.overallProgress}
-                            className="w-16 h-2"
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {job.overallProgress}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {getFriendlyCurrentStage(job.currentStage, job.status)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {formatTimestamp(job.startedAt)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm">
-                      {formatTimestamp(job.completedAt)}
-                    </span>
-                  </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
-                      <Dialog
-                        open={
-                          autoOpenJobId === job.id || manualOpenJobId === job.id
-                        }
-                        onOpenChange={(open) => {
-                          if (!open) {
-                            if (autoOpenJobId === job.id)
-                              setAutoOpenJobId(null);
-                            if (manualOpenJobId === job.id)
-                              setManualOpenJobId(null);
-                          } else {
-                            setManualOpenJobId(job.id);
-                          }
-                        }}
-                      >
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Eye className="h-3 w-3 mr-1" />
-                            Details
-                          </Button>
-                        </DialogTrigger>
-                        <JobDetailsDialog job={job} />
-                      </Dialog>
-
-                      {job.status === "failed" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            handleRetry(job.assetType, job.assetId, false)
-                          }
-                        >
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                          Retry
-                        </Button>
-                      ) : job.status === "completed" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            handleRetry(job.assetType, job.assetId, true)
-                          }
-                        >
-                          <Play className="h-3 w-3 mr-1" />
-                          Re-run
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="outline" disabled>
-                          <Clock className="h-3 w-3 mr-1" />
-                          {job.status === "processing"
-                            ? "Processing"
-                            : "Pending"}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <JobsTable
+          jobs={filteredJobs}
+          autoOpenJobId={autoOpenJobId}
+          manualOpenJobId={manualOpenJobId}
+          onDetailsOpenChange={handleDetailsOpenChange}
+          onRowClick={handleRowClick}
+          onRetry={retryJob}
+        />
       )}
 
       {/* Filter Dialog */}

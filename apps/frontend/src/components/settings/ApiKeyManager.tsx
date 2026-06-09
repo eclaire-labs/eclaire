@@ -12,16 +12,6 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,10 +30,15 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useAuth } from "@/hooks/use-auth";
 import type { AdminAccessLevel, DataAccessLevel } from "@/lib/api-actors";
+
+import type { ApiKeyFormValues } from "./api-keys/CreateApiKeyDialog";
+import { CreateApiKeyDialog } from "./api-keys/CreateApiKeyDialog";
+import { DeleteApiKeyDialog } from "./api-keys/DeleteApiKeyDialog";
+import { DeleteSystemDialog } from "./api-keys/DeleteSystemDialog";
+import { EditApiKeyDialog } from "./api-keys/EditApiKeyDialog";
 
 function getActorKindLabel(kind: "human" | "agent" | "service" | "system") {
   switch (kind) {
@@ -107,6 +102,9 @@ export default function ApiKeyManager() {
   const [editTarget, setEditTarget] = useState<{
     actorId: string;
     keyId: string;
+    name: string;
+    dataAccess: DataAccessLevel;
+    adminAccess: AdminAccessLevel;
   } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     actorId: string;
@@ -118,16 +116,6 @@ export default function ApiKeyManager() {
     name: string;
   } | null>(null);
   const [showCreateSystemDialog, setShowCreateSystemDialog] = useState(false);
-  const [newKeyName, setNewKeyName] = useState("");
-  const [newKeyDataAccess, setNewKeyDataAccess] =
-    useState<DataAccessLevel>("read");
-  const [newKeyAdminAccess, setNewKeyAdminAccess] =
-    useState<AdminAccessLevel>("none");
-  const [editKeyName, setEditKeyName] = useState("");
-  const [editKeyDataAccess, setEditKeyDataAccess] =
-    useState<DataAccessLevel>("read");
-  const [editKeyAdminAccess, setEditKeyAdminAccess] =
-    useState<AdminAccessLevel>("none");
   const [newSystemName, setNewSystemName] = useState("");
   const [createdKey, setCreatedKey] = useState<{
     key: string;
@@ -154,16 +142,16 @@ export default function ApiKeyManager() {
       });
   };
 
-  const handleCreateKey = async () => {
+  const handleCreateKey = async (values: ApiKeyFormValues) => {
     if (!createActorId) {
       return;
     }
 
     const group = actorGroups.find((item) => item.actor.id === createActorId);
     const result = await createApiKey(createActorId, {
-      name: newKeyName.trim() || undefined,
-      dataAccess: newKeyDataAccess,
-      adminAccess: newKeyAdminAccess,
+      name: values.name.trim() || undefined,
+      dataAccess: values.dataAccess,
+      adminAccess: values.adminAccess,
     });
 
     if (result) {
@@ -174,9 +162,6 @@ export default function ApiKeyManager() {
         actorName: group?.actor.displayName || "Actor",
       });
       setCreateActorId(null);
-      setNewKeyName("");
-      setNewKeyDataAccess("read");
-      setNewKeyAdminAccess("none");
       toast.success("API key created", {
         description: "Copy the full key now. It will not be shown again.",
       });
@@ -188,8 +173,8 @@ export default function ApiKeyManager() {
     });
   };
 
-  const handleUpdateKey = async () => {
-    if (!editTarget || !editKeyName.trim()) {
+  const handleUpdateKey = async (values: ApiKeyFormValues) => {
+    if (!editTarget || !values.name.trim()) {
       toast.error("Invalid name", {
         description: "API key name cannot be empty.",
       });
@@ -197,9 +182,9 @@ export default function ApiKeyManager() {
     }
 
     const success = await updateApiKey(editTarget.actorId, editTarget.keyId, {
-      name: editKeyName.trim(),
-      dataAccess: editKeyDataAccess,
-      adminAccess: editKeyAdminAccess,
+      name: values.name.trim(),
+      dataAccess: values.dataAccess,
+      adminAccess: values.adminAccess,
     });
 
     if (success) {
@@ -207,7 +192,6 @@ export default function ApiKeyManager() {
         description: "The API key has been updated successfully.",
       });
       setEditTarget(null);
-      setEditKeyName("");
       return;
     }
 
@@ -280,88 +264,6 @@ export default function ApiKeyManager() {
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString();
-
-  const renderPermissionSelectors = (
-    prefix: string,
-    dataAccess: DataAccessLevel,
-    setDataAccess: (v: DataAccessLevel) => void,
-    adminAccess: AdminAccessLevel,
-    setAdminAccess: (v: AdminAccessLevel) => void,
-  ) => (
-    <div className="grid gap-4">
-      <div className="grid gap-2">
-        <Label>Data access</Label>
-        <RadioGroup
-          value={dataAccess}
-          onValueChange={(v) => setDataAccess(v as DataAccessLevel)}
-          className="grid gap-2"
-        >
-          {(
-            Object.entries(dataAccessLevels) as [
-              DataAccessLevel,
-              { label: string; description: string },
-            ][]
-          ).map(([value, info]) => (
-            <div key={value} className="flex items-start gap-3">
-              <RadioGroupItem
-                value={value}
-                id={`${prefix}-data-${value}`}
-                className="mt-0.5"
-              />
-              <div className="space-y-0.5">
-                <Label
-                  htmlFor={`${prefix}-data-${value}`}
-                  className="cursor-pointer text-sm font-medium"
-                >
-                  {info.label}
-                </Label>
-                <div className="text-xs text-muted-foreground">
-                  {info.description}
-                </div>
-              </div>
-            </div>
-          ))}
-        </RadioGroup>
-      </div>
-
-      {isAdmin && (
-        <div className="grid gap-2">
-          <Label>Admin access</Label>
-          <RadioGroup
-            value={adminAccess}
-            onValueChange={(v) => setAdminAccess(v as AdminAccessLevel)}
-            className="grid gap-2"
-          >
-            {(
-              Object.entries(adminAccessLevels) as [
-                AdminAccessLevel,
-                { label: string; description: string },
-              ][]
-            ).map(([value, info]) => (
-              <div key={value} className="flex items-start gap-3">
-                <RadioGroupItem
-                  value={value}
-                  id={`${prefix}-admin-${value}`}
-                  className="mt-0.5"
-                />
-                <div className="space-y-0.5">
-                  <Label
-                    htmlFor={`${prefix}-admin-${value}`}
-                    className="cursor-pointer text-sm font-medium"
-                  >
-                    {info.label}
-                  </Label>
-                  <div className="text-xs text-muted-foreground">
-                    {info.description}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </RadioGroup>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="w-full space-y-6">
@@ -498,9 +400,6 @@ export default function ApiKeyManager() {
                     className="flex items-center gap-2"
                     onClick={() => {
                       setCreateActorId(actor.id);
-                      setNewKeyName("");
-                      setNewKeyDataAccess("read");
-                      setNewKeyAdminAccess("none");
                     }}
                   >
                     <PlusIcon className="h-4 w-4" />
@@ -598,14 +497,10 @@ export default function ApiKeyManager() {
                                   setEditTarget({
                                     actorId: actor.id,
                                     keyId: key.id,
+                                    name: key.name,
+                                    dataAccess: key.dataAccess ?? "read",
+                                    adminAccess: key.adminAccess ?? "none",
                                   });
-                                  setEditKeyName(key.name);
-                                  setEditKeyDataAccess(
-                                    key.dataAccess ?? "read",
-                                  );
-                                  setEditKeyAdminAccess(
-                                    key.adminAccess ?? "none",
-                                  );
                                 }}
                               >
                                 <EditIcon className="h-4 w-4" />
@@ -655,161 +550,53 @@ export default function ApiKeyManager() {
       </Alert>
 
       {/* Create Key Dialog */}
-      <Dialog
+      <CreateApiKeyDialog
         open={!!createActorId}
         onOpenChange={(open) => {
           if (!open) {
             setCreateActorId(null);
-            setNewKeyName("");
-            setNewKeyDataAccess("read");
-            setNewKeyAdminAccess("none");
           }
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create API Key</DialogTitle>
-            <DialogDescription>
-              Choose a name and permission level for this key.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="new-key-name">Name</Label>
-              <Input
-                id="new-key-name"
-                placeholder="e.g., Production integration"
-                value={newKeyName}
-                onChange={(event) => setNewKeyName(event.target.value)}
-              />
-            </div>
-            {renderPermissionSelectors(
-              "create",
-              newKeyDataAccess,
-              setNewKeyDataAccess,
-              newKeyAdminAccess,
-              setNewKeyAdminAccess,
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCreateActorId(null);
-                setNewKeyName("");
-                setNewKeyDataAccess("read");
-                setNewKeyAdminAccess("none");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleCreateKey} disabled={isLoading}>
-              Create Key
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        isAdmin={isAdmin}
+        isLoading={isLoading}
+        dataAccessLevels={dataAccessLevels}
+        adminAccessLevels={adminAccessLevels}
+        onSubmit={handleCreateKey}
+      />
 
       {/* Edit Key Dialog */}
-      <Dialog
+      <EditApiKeyDialog
         open={!!editTarget}
         onOpenChange={(open) => {
           if (!open) {
             setEditTarget(null);
-            setEditKeyName("");
           }
         }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit API Key</DialogTitle>
-            <DialogDescription>
-              Update the key name and permission level.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-key-name">Name</Label>
-              <Input
-                id="edit-key-name"
-                value={editKeyName}
-                onChange={(event) => setEditKeyName(event.target.value)}
-              />
-            </div>
-            {renderPermissionSelectors(
-              "edit",
-              editKeyDataAccess,
-              setEditKeyDataAccess,
-              editKeyAdminAccess,
-              setEditKeyAdminAccess,
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setEditTarget(null);
-                setEditKeyName("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateKey} disabled={isLoading}>
-              Update Key
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        isAdmin={isAdmin}
+        isLoading={isLoading}
+        dataAccessLevels={dataAccessLevels}
+        adminAccessLevels={adminAccessLevels}
+        initialName={editTarget?.name ?? ""}
+        initialDataAccess={editTarget?.dataAccess ?? "read"}
+        initialAdminAccess={editTarget?.adminAccess ?? "none"}
+        onSubmit={handleUpdateKey}
+      />
 
       {/* Delete Key Dialog */}
-      <AlertDialog
+      <DeleteApiKeyDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete API Key</AlertDialogTitle>
-            <AlertDialogDescription>
-              Delete {deleteTarget?.name}? Any system using this key will stop
-              working immediately.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={handleDeleteKey}
-            >
-              Delete Key
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        keyName={deleteTarget?.name}
+        onConfirm={handleDeleteKey}
+      />
 
       {/* Delete System Dialog */}
-      <AlertDialog
+      <DeleteSystemDialog
         open={!!deleteSystemTarget}
         onOpenChange={(open) => !open && setDeleteSystemTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete External System</AlertDialogTitle>
-            <AlertDialogDescription>
-              Delete {deleteSystemTarget?.name}? This removes the actor and any
-              API keys issued for it.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive hover:bg-destructive/90"
-              onClick={handleDeleteExternalSystem}
-            >
-              Delete System
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        systemName={deleteSystemTarget?.name}
+        onConfirm={handleDeleteExternalSystem}
+      />
     </div>
   );
 }

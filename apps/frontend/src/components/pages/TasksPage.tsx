@@ -10,29 +10,8 @@ import React, {
 import { toast } from "sonner";
 
 import { GroupedItemList, ListPageLayout } from "@/components/list-page";
-import { ActorPicker } from "@/components/shared/ActorPicker";
-import { DueDatePicker } from "@/components/shared/due-date-picker";
-import { TagEditor } from "@/components/shared/TagEditor";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -41,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import type { ListParams } from "@/hooks/create-crud-hooks";
 import { useActors } from "@/hooks/use-actors";
 import { useAuth } from "@/hooks/use-auth";
@@ -58,6 +36,7 @@ import {
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
 } from "./tasks/task-utils";
+import { TaskEditDialog } from "./tasks/TaskEditDialog";
 import { TaskListItem } from "./tasks/TaskListItem";
 import { tasksConfig } from "./tasks/tasks-config";
 import { TaskTileItem } from "./tasks/TaskTileItem";
@@ -258,20 +237,6 @@ export default function TasksPage() {
     setEditingTask(task);
     setIsTaskDialogOpen(true);
   }, []);
-
-  // Edit dialog handlers
-  const handleEditInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    const { name, value } = e.target;
-    setEditingTask((prev) => (prev ? { ...prev, [name]: value } : null));
-  };
-
-  const handleEditSelectChange = (name: keyof Task, value: string) => {
-    setEditingTask((prev) => (prev ? { ...prev, [name]: value } : null));
-  };
 
   // Status cycling
   const handleStatusChange = useCallback(
@@ -547,7 +512,7 @@ export default function TasksPage() {
       dialogs={
         <>
           {/* Edit Task Dialog */}
-          <Dialog
+          <TaskEditDialog
             open={isTaskDialogOpen}
             onOpenChange={(open) => {
               setIsTaskDialogOpen(open);
@@ -555,179 +520,14 @@ export default function TasksPage() {
                 setEditingTask(null);
               }
             }}
-          >
-            <DialogContent className="sm:max-w-[625px]">
-              <DialogHeader>
-                <DialogTitle>Task Details</DialogTitle>
-                <DialogDescription>
-                  View or edit task details below.
-                </DialogDescription>
-              </DialogHeader>
-              {editingTask && (
-                <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-2">
-                  {/* Title */}
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-title">
-                      Title <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="edit-title"
-                      name="title"
-                      value={editingTask.title}
-                      onChange={handleEditInputChange}
-                      required
-                    />
-                  </div>
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-description">Description</Label>
-                    <Textarea
-                      id="edit-description"
-                      name="description"
-                      rows={3}
-                      value={editingTask.description || ""}
-                      onChange={handleEditInputChange}
-                    />
-                  </div>
-                  {/* Status & Due Date */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-status">Status</Label>
-                      <Select
-                        name="taskStatus"
-                        value={editingTask.taskStatus}
-                        onValueChange={(value) =>
-                          handleEditSelectChange("taskStatus", value)
-                        }
-                      >
-                        <SelectTrigger id="edit-status">
-                          <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-priority">Priority</Label>
-                      <Select
-                        name="priority"
-                        value={String(editingTask.priority ?? 0)}
-                        onValueChange={(value) =>
-                          setEditingTask((prev) =>
-                            prev ? { ...prev, priority: Number(value) } : null,
-                          )
-                        }
-                      >
-                        <SelectTrigger id="edit-priority">
-                          <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRIORITY_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-due-date">Due Date</Label>
-                      <DueDatePicker
-                        value={editingTask.dueDate || null}
-                        onChange={(value) =>
-                          setEditingTask((prev) =>
-                            prev ? { ...prev, dueDate: value ?? "" } : null,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                  {/* Assignee */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-assignee">Assignee</Label>
-                      <ActorPicker
-                        id="edit-assignee"
-                        actors={actors}
-                        value={editingTask.delegateActorId ?? null}
-                        allowUnassigned
-                        placeholder="Search people and agents"
-                        searchPlaceholder="Search people and agents..."
-                        onChange={(value) =>
-                          setEditingTask((prev) =>
-                            prev
-                              ? {
-                                  ...prev,
-                                  delegateActorId: value,
-                                }
-                              : null,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                  {/* Tags */}
-                  <TagEditor
-                    tags={editingTask.tags}
-                    onAddTag={(tag) =>
-                      setEditingTask((prev) =>
-                        prev ? { ...prev, tags: [...prev.tags, tag] } : null,
-                      )
-                    }
-                    onRemoveTag={(tag) =>
-                      setEditingTask((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              tags: prev.tags.filter((t) => t !== tag),
-                            }
-                          : null,
-                      )
-                    }
-                  />
-                </div>
-              )}
-              <DialogFooter className="sm:justify-between gap-2 pt-4 border-t mt-2">
-                <Button
-                  variant="destructive"
-                  onClick={() =>
-                    editingTask &&
-                    state.openDeleteDialog(editingTask.id, editingTask.title)
-                  }
-                  disabled={isDeleting || isUpdating}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Delete
-                </Button>
-                <div className="flex gap-2">
-                  <DialogClose asChild>
-                    <Button
-                      variant="outline"
-                      disabled={isUpdating || isDeleting}
-                    >
-                      Cancel
-                    </Button>
-                  </DialogClose>
-                  <Button
-                    onClick={handleUpdateTask}
-                    disabled={isUpdating || isDeleting || !editingTask?.title}
-                  >
-                    {isUpdating && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Save Changes
-                  </Button>
-                </div>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+            task={editingTask}
+            onTaskChange={setEditingTask}
+            actors={actors}
+            isUpdating={isUpdating}
+            isDeleting={isDeleting}
+            onSave={handleUpdateTask}
+            onDelete={(id, title) => state.openDeleteDialog(id, title)}
+          />
 
           {/* New Task Dialog */}
           <CreateTaskDialog
