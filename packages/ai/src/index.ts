@@ -241,9 +241,10 @@ export {
 // =============================================================================
 
 export {
-  // Model CRUD
+  // Model CRUD (file-based config; standalone use)
   addModel,
   clearConfigCaches,
+  createModelId,
   getActiveModelForContext,
   // Config accessors
   getActiveModelIdForContext,
@@ -266,6 +267,7 @@ export {
   hasAllInputModalities,
   // Engine helpers
   hasEngine,
+  hasEnvVarReference,
   // Modality helpers (generic)
   hasInputModality,
   // Env var interpolation
@@ -276,16 +278,17 @@ export {
   // Config loading
   loadProvidersConfiguration,
   loadSelectionConfiguration,
+  parseModelId,
   parsePort,
   removeActiveModel,
   removeModel,
   // Provider resolution
   resolveProviderForModel,
   saveModelsConfiguration,
-  // Config write operations
+  // Config write operations (file-based config; standalone use)
   saveProvidersConfiguration,
   saveSelectionConfiguration,
-  // Selection management
+  // Selection management (file-based config; standalone use)
   setActiveModel,
   // Config path management
   setConfigPath,
