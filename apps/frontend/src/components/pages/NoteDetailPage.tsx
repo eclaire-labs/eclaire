@@ -1,11 +1,9 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
-  AlertCircle,
   ArrowLeft,
   Calendar,
   Edit,
   FileText,
-  Loader2,
   MessageCircle,
   Save,
   Trash2,
@@ -23,6 +21,7 @@ import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatus
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplay } from "@/components/markdown-display";
 import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PageError, PageLoading } from "@/components/shared/page-state";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
 import { TagEditor } from "@/components/shared/TagEditor";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +33,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useNote } from "@/hooks/use-notes";
-import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/date-utils";
 import type { Note } from "@/types/note";
 
@@ -44,7 +42,7 @@ export function NoteDetailClient() {
   const [localNote, setLocalNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const { note, isLoading, error, refresh } = useNote(noteId);
+  const { note, isLoading, error, refresh, update } = useNote(noteId);
 
   const actions = useDetailPageActions({
     contentType: "notes",
@@ -64,31 +62,18 @@ export function NoteDetailClient() {
     if (!localNote) return;
 
     try {
-      const response = await apiFetch(`/api/notes/${noteId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          title: localNote.title,
-          content: localNote.content,
-          dueDate: localNote.dueDate,
-          tags: localNote.tags,
-        }),
+      await update({
+        title: localNote.title,
+        content: localNote.content,
+        dueDate: localNote.dueDate,
+        tags: localNote.tags,
       });
-
-      if (response.ok) {
-        setIsEditing(false);
-        refresh();
-        toast.success("Note updated", {
-          description: "Your note has been saved successfully.",
-        });
-      } else {
-        toast.error("Error", {
-          description: "Failed to update note",
-        });
-      }
+      setIsEditing(false);
+      toast.success("Note updated", {
+        description: "Your note has been saved successfully.",
+      });
     } catch {
-      toast.error("Error", {
-        description: "Failed to update note",
-      });
+      // Error toast is handled by the hook
     }
   };
 
@@ -98,59 +83,17 @@ export function NoteDetailClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate({ to: "/notes" })}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+    return <PageLoading variant="detail" backTo="/notes" />;
   }
 
   if (error || (!isLoading && !note)) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Note not found";
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate({ to: "/notes" })}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Note not found</h1>
-        </div>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{errorMessage}</h2>
-          <p className="text-muted-foreground mb-4">
-            The note you're looking for doesn't exist or couldn't be loaded.
-          </p>
-          <Button onClick={() => navigate({ to: "/notes" })}>
-            Go to Notes
-          </Button>
-        </div>
-      </div>
+      <PageError
+        title="Note not found"
+        message="The note you're looking for doesn't exist or couldn't be loaded."
+        backTo="/notes"
+        backLabel="Go to Notes"
+      />
     );
   }
 

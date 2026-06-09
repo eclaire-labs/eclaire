@@ -1,15 +1,10 @@
 import { getRouteApi, useNavigate } from "@tanstack/react-router";
 import {
-  AlertCircle,
   ArrowLeft,
   Bot,
-  Calendar,
   CheckCircle2,
   Edit3,
-  Loader2,
   MessageCircle,
-  MoreHorizontal,
-  RefreshCw,
   Save,
   ThumbsUp,
   Trash2,
@@ -18,64 +13,43 @@ import {
 
 const routeApi = getRouteApi("/_authenticated/tasks/$id");
 
-import { createElement, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmDialog } from "@/components/detail-page/DeleteConfirmDialog";
-import { ProcessingStatusBadge } from "@/components/detail-page/ProcessingStatusBadge";
 import { ReprocessDialog } from "@/components/detail-page/ReprocessDialog";
 import { MarkdownDisplayWithAssets } from "@/components/markdown-display-with-assets";
-import { ActorPicker } from "@/components/shared/ActorPicker";
-import { DueDatePicker } from "@/components/shared/due-date-picker";
+import { PageError, PageLoading } from "@/components/shared/page-state";
 import { PinFlagControls } from "@/components/shared/pin-flag-controls";
-import { TagEditor } from "@/components/shared/TagEditor";
-import { Badge } from "@/components/ui/badge";
+import { TaskCommentsSection } from "@/components/tasks/TaskCommentsSection";
+import {
+  type TaskEditForm,
+  TaskDetailsSidebar,
+} from "@/components/tasks/TaskDetailsSidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useActors } from "@/hooks/use-actors";
 import { useDetailPageActions } from "@/hooks/use-detail-page-actions";
 import { useTask } from "@/hooks/use-tasks";
-import { apiFetch } from "@/lib/api-client";
-import {
-  createTaskComment,
-  deleteTaskComment,
-  updateTaskComment,
-} from "@/lib/api-comments";
-import { formatDate } from "@/lib/date-utils";
-import type { TaskComment, TaskStatus } from "@/types/task";
-
-import {
-  getEffectiveStatusDisplay,
-  getPriorityIcon,
-  getPriorityLabel,
-  getStatusConfig,
-  PRIORITY_OPTIONS,
-  STATUS_OPTIONS,
-} from "./tasks/task-utils";
-import { TaskExecutionHistory } from "./tasks/TaskExecutionHistory";
 
 export function TaskDetailClient() {
   const { id: taskId } = routeApi.useParams();
   const navigate = useNavigate();
   // Use React Query hook for data fetching
-  const { task, isLoading, error, refresh } = useTask(taskId);
+  const {
+    task,
+    isLoading,
+    error,
+    refresh,
+    update,
+    isUpdating: isSaving,
+    review,
+    isReviewing,
+  } = useTask(taskId);
 
   const actions = useDetailPageActions({
     contentType: "tasks",
@@ -85,30 +59,18 @@ export function TaskDetailClient() {
   });
 
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isReviewing, setIsReviewing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"comments" | "history">(
-    "comments",
-  );
   const { actors } = useActors(["human", "agent"]);
 
-  // Comments state
-  const [comments, setComments] = useState<TaskComment[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [isAddingComment, setIsAddingComment] = useState(false);
-  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editingCommentContent, setEditingCommentContent] = useState("");
-
   // Form state for editing
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<TaskEditForm>({
     title: "",
     description: "",
-    taskStatus: "open" as TaskStatus,
+    taskStatus: "open",
     priority: 0,
     dueDate: "",
     delegateActorId: "",
-    delegateMode: "manual" as "manual" | "assist" | "handle",
-    tags: [] as string[],
+    delegateMode: "manual",
+    tags: [],
   });
 
   // Initialize local state for editing when task data is available
@@ -127,91 +89,10 @@ export function TaskDetailClient() {
     }
   }, [task, isEditing]);
 
-  // Initialize comments from task data
-  useEffect(() => {
-    if (task?.comments) {
-      setComments(task.comments);
-    }
-  }, [task]);
-
-  // Comment management functions
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !task) return;
-
-    try {
-      setIsAddingComment(true);
-      const comment = await createTaskComment(task.id, newComment.trim());
-      setComments((prev) => [comment, ...prev]); // Add to top
-      setNewComment("");
-      refresh(); // Refresh task data (backend may trigger agent on delegated tasks)
-
-      toast.success("Comment added", {
-        description: "Your comment has been added successfully.",
-      });
-    } catch (error) {
-      console.error("Error adding comment:", error);
-      toast.error("Error", {
-        description: "Failed to add comment. Please try again.",
-      });
-    } finally {
-      setIsAddingComment(false);
-    }
-  };
-
-  const handleEditComment = async (commentId: string) => {
-    if (!editingCommentContent.trim() || !task) return;
-
-    try {
-      const updatedComment = await updateTaskComment(
-        task.id,
-        commentId,
-        editingCommentContent.trim(),
-      );
-      setComments((prev) =>
-        prev.map((c) => (c.id === commentId ? updatedComment : c)),
-      );
-      setEditingCommentId(null);
-      setEditingCommentContent("");
-
-      toast.success("Comment updated", {
-        description: "Your comment has been updated successfully.",
-      });
-    } catch (error) {
-      console.error("Error updating comment:", error);
-      toast.error("Error", {
-        description: "Failed to update comment. Please try again.",
-      });
-    }
-  };
-
-  const handleDeleteComment = async (commentId: string) => {
-    if (!task) return;
-
-    try {
-      await deleteTaskComment(task.id, commentId);
-      setComments((prev) => prev.filter((c) => c.id !== commentId));
-
-      toast.success("Comment deleted", {
-        description: "Comment has been deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting comment:", error);
-      toast.error("Error", {
-        description: "Failed to delete comment. Please try again.",
-      });
-    }
-  };
-
   const handleReviewAction = async (action: "approve" | "request_changes") => {
     if (!task) return;
     try {
-      setIsReviewing(true);
-      const endpoint = action === "approve" ? "approve" : "request-changes";
-      const response = await apiFetch(`/api/tasks/${taskId}/${endpoint}`, {
-        method: "POST",
-      });
-      if (!response.ok) throw new Error("Failed to update review status");
-      refresh();
+      await review(action);
       toast.success(
         action === "approve" ? "Output approved" : "Changes requested",
         {
@@ -221,31 +102,9 @@ export function TaskDetailClient() {
               : "Task kept in progress for the agent to revise.",
         },
       );
-    } catch (error) {
-      console.error("Error updating review status:", error);
-      toast.error("Error", {
-        description: "Failed to update review status. Please try again.",
-      });
-    } finally {
-      setIsReviewing(false);
+    } catch {
+      // Error toast is handled by the hook
     }
-  };
-
-  const renderStatusBadge = (status: TaskStatus) => {
-    const config = task
-      ? getEffectiveStatusDisplay(task)
-      : getStatusConfig(status);
-    return (
-      <Badge
-        variant="outline"
-        className={`flex items-center gap-1 ${config.badgeClass}`}
-      >
-        {createElement(config.icon, {
-          className: `h-4 w-4 ${config.iconClass}`,
-        })}
-        {config.label}
-      </Badge>
-    );
   };
 
   const handleEdit = () => {
@@ -273,8 +132,7 @@ export function TaskDetailClient() {
     if (!task) return;
 
     try {
-      setIsSaving(true);
-      const updateData = {
+      await update({
         title: editForm.title.trim(),
         description: editForm.description.trim() || null,
         taskStatus: editForm.taskStatus,
@@ -285,39 +143,20 @@ export function TaskDetailClient() {
         delegateActorId: editForm.delegateActorId.trim() || null,
         delegateMode: editForm.delegateMode,
         tags: editForm.tags,
-      };
-
-      const response = await apiFetch(`/api/tasks/${taskId}`, {
-        method: "PATCH",
-        body: JSON.stringify(updateData),
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update task");
-      }
-
-      await response.json();
       setIsEditing(false);
-
-      // Refresh to get the latest data from server
-      refresh();
 
       toast.success("Task updated", {
         description: "Your task has been updated successfully.",
       });
-    } catch (error) {
-      console.error("Error updating task:", error);
-      toast.error("Error", {
-        description: "Failed to update task. Please try again.",
-      });
-    } finally {
-      setIsSaving(false);
+    } catch {
+      // Error toast is handled by the hook
     }
   };
 
   const handleInputChange = (
-    field: keyof typeof editForm,
-    value: (typeof editForm)[keyof typeof editForm] | null,
+    field: keyof TaskEditForm,
+    value: TaskEditForm[keyof TaskEditForm] | null,
   ) => {
     setEditForm((prev) => ({
       ...prev,
@@ -326,59 +165,17 @@ export function TaskDetailClient() {
   };
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate({ to: "/tasks" })}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="h-8 w-48 bg-muted rounded animate-pulse"></div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-16 bg-muted rounded animate-pulse"></div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+    return <PageLoading variant="detail" backTo="/tasks" />;
   }
 
   if (error || (!isLoading && !task)) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Task not found";
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate({ to: "/tasks" })}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <h1 className="text-2xl font-bold">Task not found</h1>
-        </div>
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <AlertCircle className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">{errorMessage}</h2>
-          <p className="text-muted-foreground mb-4">
-            The task you're looking for doesn't exist or couldn't be loaded.
-          </p>
-          <Button onClick={() => navigate({ to: "/tasks" })}>
-            Go to Tasks
-          </Button>
-        </div>
-      </div>
+      <PageError
+        title="Task not found"
+        message="The task you're looking for doesn't exist or couldn't be loaded."
+        backTo="/tasks"
+        backLabel="Go to Tasks"
+      />
     );
   }
 
@@ -537,485 +334,22 @@ export function TaskDetailClient() {
                 </div>
 
                 {/* Comments / Execution History */}
-                <div className="space-y-4 pt-6 border-t">
-                  {task.delegateMode !== "manual" && (
-                    <div className="flex gap-1 border-b">
-                      <button
-                        type="button"
-                        className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                          activeTab === "comments"
-                            ? "border-primary text-foreground"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
-                        onClick={() => setActiveTab("comments")}
-                      >
-                        Comments ({comments.length})
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                          activeTab === "history"
-                            ? "border-primary text-foreground"
-                            : "border-transparent text-muted-foreground hover:text-foreground"
-                        }`}
-                        onClick={() => setActiveTab("history")}
-                      >
-                        Execution History
-                      </button>
-                    </div>
-                  )}
-                  {task.delegateMode === "manual" && (
-                    <div className="flex items-center justify-between">
-                      <Label className="text-base font-semibold">
-                        Comments ({comments.length})
-                      </Label>
-                    </div>
-                  )}
-
-                  {/* Execution History Tab Panel */}
-                  {task.delegateMode !== "manual" &&
-                    activeTab === "history" && (
-                      <div className="pt-2">
-                        <TaskExecutionHistory
-                          taskId={task.id}
-                          isRecurring={task.scheduleType === "recurring"}
-                          autoOpen
-                          fullWidth
-                        />
-                      </div>
-                    )}
-
-                  {/* Comments Tab Panel */}
-                  {(task.delegateMode === "manual" ||
-                    activeTab === "comments") && (
-                    <>
-                      {/* Add Comment Form */}
-                      <div className="space-y-2">
-                        <Textarea
-                          placeholder="Add a comment..."
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          rows={3}
-                          className="resize-none"
-                        />
-                        <div className="flex justify-end">
-                          <Button
-                            onClick={handleAddComment}
-                            disabled={!newComment.trim() || isAddingComment}
-                            size="sm"
-                          >
-                            {isAddingComment ? (
-                              <>
-                                <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                                Adding...
-                              </>
-                            ) : (
-                              "Add Comment"
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Comments List */}
-                      <div className="space-y-4">
-                        {comments.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-8">
-                            No comments yet. Be the first to comment!
-                          </p>
-                        ) : (
-                          comments.map((comment) => (
-                            <div
-                              key={comment.id}
-                              className="border rounded-lg p-4 space-y-2"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center gap-1">
-                                    {comment.author.kind === "agent" ? (
-                                      <span className="text-sm">🤖</span>
-                                    ) : (
-                                      <span className="text-sm">👤</span>
-                                    )}
-                                    <span className="font-medium text-sm">
-                                      {comment.author.displayName ||
-                                        comment.author.id}
-                                    </span>
-                                  </div>
-                                  <Badge
-                                    variant={
-                                      comment.author.kind === "agent"
-                                        ? "default"
-                                        : "secondary"
-                                    }
-                                    className="text-xs"
-                                  >
-                                    {comment.author.kind === "agent"
-                                      ? "Agent"
-                                      : "Team Member"}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatDate(comment.createdAt)}
-                                    {comment.updatedAt !== comment.createdAt &&
-                                      " (edited)"}
-                                  </span>
-                                  {/* Only show edit/delete for current user's comments */}
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 w-6 p-0"
-                                      >
-                                        <MoreHorizontal className="h-3 w-3" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      <DropdownMenuItem
-                                        onClick={() => {
-                                          setEditingCommentId(comment.id);
-                                          setEditingCommentContent(
-                                            comment.content,
-                                          );
-                                        }}
-                                      >
-                                        <Edit3 className="mr-2 h-3 w-3" />
-                                        Edit
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() =>
-                                          handleDeleteComment(comment.id)
-                                        }
-                                        className="text-destructive focus:text-destructive"
-                                      >
-                                        <Trash2 className="mr-2 h-3 w-3" />
-                                        Delete
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                              </div>
-
-                              {editingCommentId === comment.id ? (
-                                <div className="space-y-2">
-                                  <Textarea
-                                    value={editingCommentContent}
-                                    onChange={(e) =>
-                                      setEditingCommentContent(e.target.value)
-                                    }
-                                    rows={3}
-                                    className="resize-none"
-                                  />
-                                  <div className="flex gap-2 justify-end">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        setEditingCommentId(null);
-                                        setEditingCommentContent("");
-                                      }}
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      onClick={() =>
-                                        handleEditComment(comment.id)
-                                      }
-                                      disabled={!editingCommentContent.trim()}
-                                    >
-                                      Save
-                                    </Button>
-                                  </div>
-                                </div>
-                              ) : (
-                                <MarkdownDisplayWithAssets
-                                  content={comment.content}
-                                  className="text-sm prose-sm"
-                                />
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
+                <TaskCommentsSection task={task} onCommentAdded={refresh} />
               </CardContent>
             </Card>
           </div>
 
           {/* Sidebar - Task Details */}
-          <div className="w-full lg:w-80 space-y-6">
-            {/* Task Details Card */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-4 text-sm">
-                  {/* Delegated By */}
-                  {task.delegatedByActorId && (
-                    <div>
-                      <Label className="flex items-center gap-2">
-                        <Bot className="h-4 w-4" />
-                        Delegated By
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {(() => {
-                          const delegator = actors.find(
-                            (a) => a.id === task.delegatedByActorId,
-                          );
-                          return delegator?.label || task.delegatedByActorId;
-                        })()}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Status */}
-                  <div>
-                    <Label>Status</Label>
-                    {isEditing ? (
-                      <Select
-                        value={editForm.taskStatus}
-                        onValueChange={(value: TaskStatus) =>
-                          handleInputChange("taskStatus", value)
-                        }
-                      >
-                        <SelectTrigger className="w-fit min-w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      renderStatusBadge(task.taskStatus)
-                    )}
-                  </div>
-
-                  {/* Priority */}
-                  <div>
-                    <Label>Priority</Label>
-                    {isEditing ? (
-                      <Select
-                        value={String(editForm.priority)}
-                        onValueChange={(value) =>
-                          handleInputChange("priority", Number(value))
-                        }
-                      >
-                        <SelectTrigger className="w-fit min-w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PRIORITY_OPTIONS.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        {getPriorityIcon(task.priority)}
-                        <span className="text-muted-foreground">
-                          {getPriorityLabel(task.priority)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label>Due Date</Label>
-                    {isEditing ? (
-                      <DueDatePicker
-                        value={editForm.dueDate}
-                        onChange={(value) =>
-                          handleInputChange("dueDate", value)
-                        }
-                      />
-                    ) : (
-                      <p className="text-muted-foreground flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        {task.dueDate
-                          ? formatDate(task.dueDate)
-                          : "No due date set"}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Label>Assigned To</Label>
-                    {isEditing ? (
-                      <ActorPicker
-                        actors={actors}
-                        value={editForm.delegateActorId || null}
-                        allowUnassigned
-                        placeholder="Search people and agents"
-                        searchPlaceholder="Search people and agents..."
-                        onChange={(value) =>
-                          handleInputChange("delegateActorId", value ?? "")
-                        }
-                      />
-                    ) : (
-                      <p className="text-muted-foreground">
-                        {task.delegateActorId
-                          ? (() => {
-                              const assigneeId = task.delegateActorId;
-                              const assignee = actors.find(
-                                (actor) => actor.id === assigneeId,
-                              );
-                              const displayName = assignee?.label || assigneeId;
-                              const icon =
-                                assignee?.kind === "agent" ? "🤖" : "👤";
-                              return `${icon} ${displayName}`;
-                            })()
-                          : "Unassigned"}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Execution Mode */}
-                  {isEditing
-                    ? editForm.delegateMode !== "manual" && (
-                        <div>
-                          <label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={editForm.delegateMode === "assist"}
-                              onChange={(e) =>
-                                handleInputChange(
-                                  "delegateMode",
-                                  e.target.checked ? "assist" : "handle",
-                                )
-                              }
-                              className="rounded border-border"
-                            />
-                            Require review before completing
-                          </label>
-                        </div>
-                      )
-                    : task.delegateMode !== "manual" && (
-                        <div>
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={task.delegateMode === "assist"}
-                              disabled
-                              className="rounded border-border"
-                            />
-                            Require review before completing
-                          </label>
-                        </div>
-                      )}
-
-                  {isEditing && (
-                    <TagEditor
-                      tags={editForm.tags}
-                      onAddTag={(tag) =>
-                        handleInputChange("tags", [...editForm.tags, tag])
-                      }
-                      onRemoveTag={(tag) =>
-                        handleInputChange(
-                          "tags",
-                          editForm.tags.filter((t: string) => t !== tag),
-                        )
-                      }
-                    />
-                  )}
-
-                  {!isEditing && (
-                    <>
-                      <div>
-                        <Label className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Created
-                        </Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formatDate(task.createdAt)}
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Updated
-                        </Label>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {formatDate(task.updatedAt)}
-                        </p>
-                      </div>
-
-                      {/* Completion Date - Only show when task is completed */}
-                      {task.taskStatus === "completed" && task.completedAt && (
-                        <div>
-                          <Label className="flex items-center gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-600" />
-                            Completed
-                          </Label>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {formatDate(task.completedAt)}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Tags Section */}
-                      <div>
-                        <Label>Tags</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {task.tags.length > 0 ? (
-                            task.tags.map((tag) => (
-                              <Badge key={tag} variant="outline">
-                                {tag}
-                              </Badge>
-                            ))
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No tags
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Schedule Info */}
-                      {task.scheduleType !== "none" && task.scheduleSummary && (
-                        <div>
-                          <Label className="flex items-center gap-2">
-                            <RefreshCw className="h-4 w-4" />
-                            Schedule
-                          </Label>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {task.scheduleSummary}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Execution History moved to main content area tabs */}
-
-                      <div>
-                        <Label>Processing Status</Label>
-                        <div className="mt-1">
-                          <ProcessingStatusBadge
-                            contentType="tasks"
-                            itemId={task.id}
-                            processingStatus={task.processingStatus}
-                            processingEnabled={task.processingEnabled}
-                            isJobStuck={actions.isJobStuck}
-                            isReprocessing={actions.isReprocessing}
-                            onReprocessClick={() =>
-                              actions.setShowReprocessDialog(true)
-                            }
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <TaskDetailsSidebar
+            task={task}
+            actors={actors}
+            isEditing={isEditing}
+            editForm={editForm}
+            onInputChange={handleInputChange}
+            isJobStuck={actions.isJobStuck}
+            isReprocessing={actions.isReprocessing}
+            onReprocessClick={() => actions.setShowReprocessDialog(true)}
+          />
         </div>
 
         {/* Delete Confirmation Dialog */}

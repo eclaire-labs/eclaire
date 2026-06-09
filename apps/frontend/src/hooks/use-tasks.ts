@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { apiFetch } from "@/lib/api-client";
@@ -107,6 +107,24 @@ export function useTasks(params: ListParams = {}) {
 }
 
 export function useTask(id: string) {
+  const queryClient = useQueryClient();
   const { item: task, ...rest } = useSingle(id);
-  return { task, ...rest };
+
+  /** Approve or request changes on a delegated task's agent output. */
+  const reviewMutation = useMutation({
+    mutationFn: async (action: "approve" | "request_changes") => {
+      const endpoint = action === "approve" ? "approve" : "request-changes";
+      await apiFetch(`/api/tasks/${id}/${endpoint}`, { method: "POST" });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    onError: (error: Error) =>
+      toast.error(`Review update failed: ${error.message}`),
+  });
+
+  return {
+    task,
+    ...rest,
+    review: reviewMutation.mutateAsync,
+    isReviewing: reviewMutation.isPending,
+  };
 }
