@@ -101,6 +101,21 @@ describe("Adapters", () => {
         expect(request.headers.Authorization).toBe("Bearer test-api-key");
       });
 
+      it("infers bearer header and prefix from a raw token", () => {
+        const request = openaiCompatibleAdapter.buildRequest(
+          "http://localhost:8080/v1",
+          "/chat/completions",
+          {
+            messages: [{ role: "user", content: "Hello" }],
+            model: "test-model",
+            options: {},
+          },
+          { type: "bearer", value: "test-api-key" },
+        );
+
+        expect(request.headers.Authorization).toBe("Bearer test-api-key");
+      });
+
       it("handles header auth", () => {
         const request = openaiCompatibleAdapter.buildRequest(
           "http://localhost:8080/v1",

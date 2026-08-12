@@ -101,6 +101,7 @@ export async function addCommand(options: CommandOptions): Promise<void> {
         "llama-cpp",
         "ollama",
         "openrouter",
+        "atlascloud",
         "lm-studio",
         "mlx-lm",
         "mlx-vlm",

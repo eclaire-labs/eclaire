@@ -5,6 +5,7 @@
  * Used by: OpenAI, OpenRouter, llama.cpp, LM Studio, Ollama, and other compatible providers.
  */
 
+import { resolveProviderAuthHeader } from "../config.js";
 import { createLazyLogger } from "../logger.js";
 import type {
   AdapterRequest,
@@ -47,8 +48,9 @@ export class OpenAICompatibleAdapter implements DialectAdapter {
     };
 
     // Add authentication using new format (after custom headers so auth can't be overridden)
-    if (auth.type !== "none" && auth.header && auth.value) {
-      headers[auth.header] = auth.value;
+    const authHeader = resolveProviderAuthHeader(auth);
+    if (authHeader) {
+      headers[authHeader[0]] = authHeader[1];
     }
 
     // Build request body

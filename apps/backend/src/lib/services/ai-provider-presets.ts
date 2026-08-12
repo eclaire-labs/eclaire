@@ -111,6 +111,22 @@ const PROVIDER_PRESETS: ProviderPresetInfo[] = [
     },
   },
   {
+    id: "atlascloud",
+    name: "Atlas Cloud",
+    description: "Atlas Cloud OpenAI-compatible API (requires API key)",
+    isCloud: true,
+    supportsCatalogDiscovery: true,
+    config: {
+      dialect: "openai_compatible",
+      baseUrl: "https://api.atlascloud.ai/v1",
+      auth: {
+        type: "bearer",
+        requiresApiKey: true,
+        envVar: "ATLASCLOUD_API_KEY",
+      },
+    },
+  },
+  {
     id: "openai",
     name: "OpenAI",
     description: "OpenAI API (requires API key)",

@@ -8,8 +8,8 @@ import {
 describe("listProviderPresets", () => {
   const presets = listProviderPresets();
 
-  it("returns all 9 presets", () => {
-    expect(presets).toHaveLength(9);
+  it("returns all 10 presets", () => {
+    expect(presets).toHaveLength(10);
   });
 
   it("all presets have required fields", () => {
@@ -33,10 +33,12 @@ describe("listProviderPresets", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("openrouter and openai support catalog discovery", () => {
+  it("cloud OpenAI-compatible providers support catalog discovery", () => {
     const openrouter = presets.find((p) => p.id === "openrouter");
+    const atlascloud = presets.find((p) => p.id === "atlascloud");
     const openai = presets.find((p) => p.id === "openai");
     expect(openrouter?.supportsCatalogDiscovery).toBe(true);
+    expect(atlascloud?.supportsCatalogDiscovery).toBe(true);
     expect(openai?.supportsCatalogDiscovery).toBe(true);
   });
 
@@ -49,12 +51,31 @@ describe("listProviderPresets", () => {
   });
 
   it("cloud providers require API keys", () => {
-    const cloudIds = ["openrouter", "openai", "anthropic"];
+    const cloudIds = ["openrouter", "atlascloud", "openai", "anthropic"];
     for (const id of cloudIds) {
       const preset = presets.find((p) => p.id === id);
       expect(preset?.isCloud).toBe(true);
       expect(preset?.config.auth.requiresApiKey).toBe(true);
     }
+  });
+
+  it("configures Atlas Cloud with its standard endpoint and key", () => {
+    const atlascloud = presets.find((p) => p.id === "atlascloud");
+
+    expect(atlascloud).toMatchObject({
+      name: "Atlas Cloud",
+      isCloud: true,
+      supportsCatalogDiscovery: true,
+      config: {
+        dialect: "openai_compatible",
+        baseUrl: "https://api.atlascloud.ai/v1",
+        auth: {
+          type: "bearer",
+          requiresApiKey: true,
+          envVar: "ATLASCLOUD_API_KEY",
+        },
+      },
+    });
   });
 });
 

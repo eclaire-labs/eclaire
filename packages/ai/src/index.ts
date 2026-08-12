@@ -277,6 +277,7 @@ export {
   loadProvidersConfiguration,
   loadSelectionConfiguration,
   parsePort,
+  resolveProviderAuthHeader,
   removeActiveModel,
   removeModel,
   // Provider resolution

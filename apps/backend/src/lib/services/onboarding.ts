@@ -153,6 +153,16 @@ const SETUP_PRESETS: SetupPreset[] = [
     providers: [{ presetId: "openrouter" }],
   },
   {
+    id: "atlascloud",
+    name: "Atlas Cloud",
+    description:
+      "Atlas Cloud OpenAI-compatible API with live model catalog discovery. Requires an Atlas Cloud API key.",
+    audience: "Users wanting Atlas Cloud model access",
+    isCloud: true,
+    requiresApiKey: true,
+    providers: [{ presetId: "atlascloud" }],
+  },
+  {
     id: "openai",
     name: "OpenAI",
     description: "OpenAI API (GPT-4, etc.). Requires an OpenAI API key.",
