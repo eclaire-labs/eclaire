@@ -81,6 +81,25 @@ export function hasEnvVarReference(value: string): boolean {
 }
 
 /**
+ * Resolve a provider auth object to the HTTP header sent to the provider.
+ * Bearer auth accepts either a raw token or an already-prefixed value.
+ */
+export function resolveProviderAuthHeader(
+  auth: ProviderAuth,
+): [name: string, value: string] | undefined {
+  if (auth.type === "none" || !auth.value) return undefined;
+
+  if (auth.type === "bearer") {
+    const value = /^Bearer\s/i.test(auth.value)
+      ? auth.value
+      : `Bearer ${auth.value}`;
+    return [auth.header ?? "Authorization", value];
+  }
+
+  return auth.header ? [auth.header, auth.value] : undefined;
+}
+
+/**
  * Interpolate environment variables in provider auth
  */
 function interpolateAuth(auth: ProviderAuth): ProviderAuth {

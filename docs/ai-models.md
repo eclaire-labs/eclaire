@@ -153,6 +153,7 @@ The active selection maps contexts (`backend`, `workers`) to specific models. Se
 | **LM Studio** | Local | `openai_compatible` | GUI-based model loading |
 | **vLLM** | Local | `openai_compatible` | High-performance inference |
 | **OpenRouter** | Cloud | `openai_compatible` | Access to many models via one API |
+| **Atlas Cloud** | Cloud | `openai_compatible` | Live model catalog via `ATLASCLOUD_API_KEY` |
 | **OpenAI** | Cloud | `openai_compatible` | GPT models |
 | **Anthropic** | Cloud | `anthropic_messages` | Claude models |
 
