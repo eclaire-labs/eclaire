@@ -188,6 +188,7 @@ const start = async () => {
         whisperCpp: config.audio.whisperCpp ?? undefined,
         pocketTts: config.audio.pocketTts ?? undefined,
         omlx: config.audio.omlx ?? undefined,
+        rapidMlx: config.audio.rapidMlx ?? undefined,
       });
       logger.info(
         {
@@ -201,6 +202,9 @@ const start = async () => {
             : "not configured",
           omlx: config.audio.omlx
             ? config.audio.omlx.baseUrl
+            : "not configured",
+          rapidMlx: config.audio.rapidMlx
+            ? config.audio.rapidMlx.baseUrl
             : "not configured",
         },
         "Audio providers initialized",

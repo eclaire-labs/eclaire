@@ -27,6 +27,8 @@ export { MlxAudioClient, readAudioFile } from "./mlx-client.js";
 export { MlxAudioProvider } from "./mlx-provider.js";
 export { OmlxAudioClient } from "./omlx-client.js";
 export { OmlxAudioProvider } from "./omlx-provider.js";
+export { RapidMlxAudioClient } from "./rapid-mlx-client.js";
+export { RapidMlxAudioProvider } from "./rapid-mlx-provider.js";
 export type { MlxRealtimeConfig } from "./mlx-ws-client.js";
 export { MlxRealtimeClient } from "./mlx-ws-client.js";
 export { PocketTtsClient } from "./pocket-tts-client.js";
@@ -40,6 +42,7 @@ export type {
   AudioProviderId,
   ElevenLabsProviderConfig,
   OmlxAudioProviderConfig,
+  RapidMlxAudioProviderConfig,
   PocketTtsProviderConfig,
   RealtimeTranscriptionClient,
   StreamingTranscriptionEvent,
