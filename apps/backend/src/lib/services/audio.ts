@@ -18,6 +18,8 @@ import {
   MlxRealtimeClient,
   OmlxAudioProvider,
   type OmlxAudioProviderConfig,
+  RapidMlxAudioProvider,
+  type RapidMlxAudioProviderConfig,
   PocketTtsProvider,
   type PocketTtsProviderConfig,
   type RealtimeTranscriptionClient,
@@ -47,6 +49,7 @@ export interface AudioServiceConfig {
   whisperCpp?: WhisperCppProviderConfig;
   pocketTts?: PocketTtsProviderConfig;
   omlx?: OmlxAudioProviderConfig;
+  rapidMlx?: RapidMlxAudioProviderConfig;
 }
 
 /**
@@ -86,6 +89,14 @@ export function initAudioProviders(cfg: AudioServiceConfig): void {
     providers.set("omlx", new OmlxAudioProvider(cfg.omlx));
     configs.set("omlx", cfg.omlx);
     logger.info({ baseUrl: cfg.omlx.baseUrl }, "omlx provider created");
+  }
+  if (cfg.rapidMlx) {
+    providers.set("rapid-mlx", new RapidMlxAudioProvider(cfg.rapidMlx));
+    configs.set("rapid-mlx", cfg.rapidMlx);
+    logger.info(
+      { baseUrl: cfg.rapidMlx.baseUrl },
+      "rapid-mlx provider created",
+    );
   }
 }
 

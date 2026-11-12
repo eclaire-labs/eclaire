@@ -14,6 +14,7 @@ import type {
   AudioProviderId,
   ElevenLabsProviderConfig,
   OmlxAudioProviderConfig,
+  RapidMlxAudioProviderConfig,
   PocketTtsProviderConfig,
   WhisperCppProviderConfig,
 } from "../types.js";
@@ -53,6 +54,14 @@ export const TEST_POCKET_TTS_CONFIG: PocketTtsProviderConfig = {
 
 export const TEST_OMLX_CONFIG: OmlxAudioProviderConfig = {
   baseUrl: "http://127.0.0.1:8000",
+  requestTimeoutMs: 5000,
+  defaultSttModel: "test-stt-model",
+  defaultTtsModel: "test-tts-model",
+  defaultTtsVoice: "test-voice",
+};
+
+export const TEST_RAPID_MLX_CONFIG: RapidMlxAudioProviderConfig = {
+  baseUrl: "http://localhost:8000/v1",
   requestTimeoutMs: 5000,
   defaultSttModel: "test-stt-model",
   defaultTtsModel: "test-tts-model",

@@ -112,6 +112,13 @@ export interface EclaireConfig {
       defaultTtsModel: string;
       defaultTtsVoice: string;
     } | null;
+    rapidMlx: {
+      baseUrl: string;
+      requestTimeoutMs: number;
+      defaultSttModel: string;
+      defaultTtsModel: string;
+      defaultTtsVoice: string;
+    } | null;
   };
 
   // Browser automation
@@ -446,6 +453,16 @@ export function buildConfig(): EclaireConfig {
             defaultTtsModel:
               env.OMLX_TTS_MODEL || "mlx-community/Kokoro-82M-bf16",
             defaultTtsVoice: env.OMLX_TTS_VOICE || "",
+          }
+        : null,
+      rapidMlx: env.RAPID_MLX_BASE_URL
+        ? {
+            baseUrl: env.RAPID_MLX_BASE_URL,
+            requestTimeoutMs: int(env.RAPID_MLX_AUDIO_TIMEOUT, 30000),
+            defaultSttModel:
+              env.RAPID_MLX_STT_MODEL || "whisper-large-v3-turbo",
+            defaultTtsModel: env.RAPID_MLX_TTS_MODEL || "tts-1",
+            defaultTtsVoice: env.RAPID_MLX_TTS_VOICE || "",
           }
         : null,
     },

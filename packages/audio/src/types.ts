@@ -13,6 +13,7 @@
 export type AudioProviderId =
   | "mlx-audio"
   | "omlx"
+  | "rapid-mlx"
   | "elevenlabs"
   | "whisper-cpp"
   | "pocket-tts";
@@ -46,6 +47,20 @@ export interface AudioProviderConfig {
 /** Config for the oMLX provider (unified STT + TTS via oMLX server) */
 export interface OmlxAudioProviderConfig {
   /** Base URL of the oMLX server (e.g. "http://127.0.0.1:8000") */
+  baseUrl: string;
+  /** Request timeout in milliseconds (default: 30000) */
+  requestTimeoutMs: number;
+  /** Default STT model identifier */
+  defaultSttModel: string;
+  /** Default TTS model identifier */
+  defaultTtsModel: string;
+  /** Default TTS voice identifier */
+  defaultTtsVoice: string;
+}
+
+/** Config for the Rapid-MLX provider (unified STT + TTS via Rapid-MLX server) */
+export interface RapidMlxAudioProviderConfig {
+  /** Base URL of the Rapid-MLX server (e.g. "http://localhost:8000/v1") */
   baseUrl: string;
   /** Request timeout in milliseconds (default: 30000) */
   requestTimeoutMs: number;
